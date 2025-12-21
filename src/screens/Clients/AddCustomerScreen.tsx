@@ -21,7 +21,7 @@ import {
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList, FormErrors, CustomerFormData } from '../../types';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { createCustomers, fetchCustomersById } from '../../apis/customerApis';
+import { createCustomers, fetchCustomersById, updateCustomers } from '../../apis/customerApis';
 import { validateForm } from '../../utils/validators';
 import { STATES } from '../../constants/state';
 
@@ -47,6 +47,8 @@ const AddCustomerScreen = ({ navigation, route }: Props) => {
         queryFn: () => fetchCustomersById(customerId!),
         enabled: isEditMode && !!customerId,
     })
+
+    console.log("existingCustomer", existingCustomer)
 
     const [formData, setFormData] = useState<CustomerFormData>({
         name: '',
@@ -74,6 +76,16 @@ const AddCustomerScreen = ({ navigation, route }: Props) => {
             queryClient.invalidateQueries({ queryKey: ['customers'], exact: true });
         }
     })
+    const updateProductMutation = useMutation({
+        mutationFn: ({ id, customerData }: {
+            id: string;
+            customerData: CustomerFormData;
+        }) => updateCustomers(id, customerData),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['customers'], exact: true });
+        }
+    })
+
 
     useEffect(() => {
         if (isEditMode && existingCustomer.data) {
@@ -92,7 +104,7 @@ const AddCustomerScreen = ({ navigation, route }: Props) => {
                 notes: existingCustomer.data.notes || '',
             });
         }
-    }, [isEditMode, existingCustomer]);
+    }, [isEditMode, existingCustomer.data]);
 
     useEffect(() => {
         navigation.setOptions({
@@ -125,9 +137,14 @@ const AddCustomerScreen = ({ navigation, route }: Props) => {
         };
 
         if (isEditMode) {
-            Alert.alert('Success', 'Customer updated successfully', [
-                { text: 'OK', onPress: () => navigation.goBack() },
-            ]);
+            updateProductMutation.mutate({ id: customerId!, customerData }, {
+                onSuccess: () => {
+                    Alert.alert('Success', 'Customer updated successfully', [
+                        { text: 'OK', onPress: () => navigation.goBack() },
+                    ]);
+                }
+            })
+
         } else {
             createProductMutation.mutate(customerData, {
                 onSuccess: () => {

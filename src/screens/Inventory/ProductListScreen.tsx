@@ -40,7 +40,7 @@ const ProductListScreen: React.FC<Props> = ({ navigation }) => {
         queryFn: fetchProducts,
         staleTime: 5 * 60 * 1000,
     });
-    console.log("products", products)
+
     if (isLoading) {
         return (
             <View style={styles.loadingContainer}>
@@ -49,7 +49,7 @@ const ProductListScreen: React.FC<Props> = ({ navigation }) => {
         );
     }
 
-    console.log("products", products)
+
 
     // 🔍 Search + Sorting Logic
     const filteredProducts = products

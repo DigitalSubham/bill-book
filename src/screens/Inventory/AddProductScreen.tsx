@@ -51,8 +51,6 @@ const AddProductScreen: React.FC<Props> = ({ navigation, route }) => {
     const isEditMode = route?.params?.productId !== undefined;
     const productId = route?.params?.productId;
 
-    console.log("productId", isEditMode, productId)
-
     const { data: existingProduct } = useQuery({
         queryKey: ["product", productId],
         queryFn: () => fetchProductById(productId!),
@@ -127,7 +125,7 @@ const AddProductScreen: React.FC<Props> = ({ navigation, route }) => {
         },
     });
 
-    console.log("existingProduct", existingProduct, formData)
+
     useEffect(() => {
         if (isEditMode && existingProduct) {
             setFormData({
@@ -191,8 +189,8 @@ const AddProductScreen: React.FC<Props> = ({ navigation, route }) => {
         const mrp = Number.parseFloat(formData.mrp) || 0;
         const rate = Number.parseFloat(formData.rate) || 0;
         const profit = mrp - rate;
-        const profitPercentage = mrp > 0 ? ((profit / mrp) * 100).toFixed(2) : '0';
-        return `₹${profit.toFixed(2)} (${profitPercentage}%)`;
+        const profitPercentage = mrp > 0 ? ((profit / mrp) * 100)?.toFixed(2) : '0';
+        return `₹${profit?.toFixed(2)} (${profitPercentage}%)`;
     };
 
     const handleSubmit = () => {

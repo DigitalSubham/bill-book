@@ -25,7 +25,6 @@ const AppNavigator = () => {
     },
   };
 
-  console.log("token", token)
 
   return (
     <NavigationContainer ref={navigationRef} theme={theme}>

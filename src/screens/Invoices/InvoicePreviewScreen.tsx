@@ -24,12 +24,12 @@ export const InvoicePreviewScreen: React.FC<InvoicePreviewProps> = ({
     route,
 }) => {
     const { invoice, formType } = route.params;
-    console.log("invoice", invoice)
     const { data: business } = useQuery({
         queryKey: ['business'],
         queryFn: getProfileApi,
 
     })
+    console.log("business", business)
     const [qrBase64, setQrBase64] = useState<string | null>(null);
     const [generating, setGenerating] = useState(false);
     const generateInvoice = useMutation({
@@ -84,7 +84,6 @@ export const InvoicePreviewScreen: React.FC<InvoicePreviewProps> = ({
         try {
             setGenerating(true);
             const filePath = await generateInvoicePDF(invoice, business, qrBase64);
-            console.log("filePath", filePath)
             shareInvoicePDF(filePath)
         } catch (error) {
             console.log(error)
@@ -286,7 +285,7 @@ export const InvoicePreviewScreen: React.FC<InvoicePreviewProps> = ({
                 </Button>}
 
                 <QrGenerator
-                    value={`upi://pay?pa=${business.upi_id}&pn=${business.name}`}
+                    value={`upi://pay?pa=${business?.upi_id}&pn=${business?.name}`}
                     onGenerated={setQrBase64}
                 />
             </View>

@@ -4,9 +4,9 @@ export const calculateItemAmount = (quantity, rate, taxRate) => {
   const totalAmount = baseAmount + taxAmount;
 
   return {
-    baseAmount: parseFloat(baseAmount.toFixed(2)),
-    taxAmount: parseFloat(taxAmount.toFixed(2)),
-    totalAmount: parseFloat(totalAmount.toFixed(2)),
+    baseAmount: parseFloat(baseAmount?.toFixed(2)),
+    taxAmount: parseFloat(taxAmount?.toFixed(2)),
+    totalAmount: parseFloat(totalAmount?.toFixed(2)),
   };
 };
 
@@ -25,11 +25,11 @@ export const calculateInvoiceTotals = items => {
   const totalAmount = subtotal + totalTax;
 
   return {
-    subtotal: parseFloat(subtotal.toFixed(2)),
-    taxableAmount: parseFloat(taxableAmount.toFixed(2)),
-    cgst: parseFloat(cgst.toFixed(2)),
-    sgst: parseFloat(sgst.toFixed(2)),
-    totalAmount: parseFloat(totalAmount.toFixed(2)),
+    subtotal: parseFloat(subtotal?.toFixed(2)),
+    taxableAmount: parseFloat(taxableAmount?.toFixed(2)),
+    cgst: parseFloat(cgst?.toFixed(2)),
+    sgst: parseFloat(sgst?.toFixed(2)),
+    totalAmount: parseFloat(totalAmount?.toFixed(2)),
   };
 };
 
@@ -104,7 +104,7 @@ export const convertAmountToWords = (amount: number) => {
     );
   };
 
-  const [rupees, paise] = Number(amount).toFixed(2).split('.');
+  const [rupees, paise] = Number(amount)?.toFixed(2).split('.');
   let result = convertToWords(parseInt(rupees))?.trim();
   if (!result) result = 'Zero';
   result += ' Rupees';

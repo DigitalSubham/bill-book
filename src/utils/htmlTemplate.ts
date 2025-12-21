@@ -1,7 +1,7 @@
 import { dateFmt } from './calculations';
 
 export const htmlTemplate = (invoice: any, business: any) => {
-  const format = (v: number) => (typeof v === 'number' ? v.toFixed(2) : v);
+  const format = (v: number) => (typeof v === 'number' ? v?.toFixed(2) : v);
 
   return `<!doctype html>
 <html>
@@ -175,6 +175,7 @@ export const htmlTemplate = (invoice: any, business: any) => {
         <div class="box">
           <strong>BILL TO</strong><br/>
           ${invoice.customerName || ''}<br/>
+          ${invoice.customerGST || ''}<br/>
           ${invoice.customerAddress || ''}<br/>
           Mobile : ${invoice.customerMobile || ''}<br/>
           Place of Supply : ${invoice.placeOfSupply || ''}
@@ -222,7 +223,7 @@ export const htmlTemplate = (invoice: any, business: any) => {
                     it.rate || it.selling_rate || 0,
                   )}</td>
                   <td class="c-tax" style="text-align:right">${taxTxt}<br/>₹${format(
-                    it.taxAmount || 0,
+                    it.taxAmount || it.tax_amount || 0,
                   )}</td>
                   <td class="c-amt" style="text-align:right">₹${format(
                     it.amount || 0,
@@ -253,7 +254,6 @@ export const htmlTemplate = (invoice: any, business: any) => {
         Name: ${business.bankName || ''} <br/>
         IFSC Code: ${business.ifsc || ''} <br/>
         Account No: ${business.accountNumber || ''} <br/>
-        Bank: ${business.bankBranch || ''}
       </div>
 
       <div class="qr">

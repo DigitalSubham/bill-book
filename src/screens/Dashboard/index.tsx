@@ -147,7 +147,7 @@ const DashboardScreen: React.FC<Props> = ({ navigation }) => {
                                 <Text style={styles.primaryStatLabel}>Total Sales</Text>
                                 <Avatar.Icon size={40} icon="currency-inr" style={styles.primaryIconOverlay} />
                             </View>
-                            <Text style={styles.primaryStatValue}>₹{(stats.totalSales / 100000).toFixed(1)}L</Text>
+                            <Text style={styles.primaryStatValue}>₹{(stats.totalSales / 100000)?.toFixed(1)}L</Text>
                             <Text style={styles.primaryStatSubtext}>All time revenue</Text>
                         </Card.Content>
                     </Card>
@@ -171,7 +171,7 @@ const DashboardScreen: React.FC<Props> = ({ navigation }) => {
                                 <Text style={{ fontSize: 20 }}>⏳</Text>
                             </View>
                             <Text style={styles.secondaryLabel}>Pending</Text>
-                            <Text style={styles.secondaryValue}>₹{(stats.pendingAmount / 1000).toFixed(0)}K</Text>
+                            <Text style={styles.secondaryValue}>₹{(stats.pendingAmount / 1000)?.toFixed(0)}K</Text>
                         </Card.Content>
                     </Card>
 
@@ -191,7 +191,7 @@ const DashboardScreen: React.FC<Props> = ({ navigation }) => {
                                 <Text style={{ fontSize: 20 }}>📈</Text>
                             </View>
                             <Text style={styles.secondaryLabel}>Today</Text>
-                            <Text style={styles.secondaryValue}>₹{(stats.todaySales / 1000).toFixed(0)}K</Text>
+                            <Text style={styles.secondaryValue}>₹{(stats.todaySales / 1000)?.toFixed(0)}K</Text>
                         </Card.Content>
                     </Card>
                 </View>
@@ -241,7 +241,7 @@ const DashboardScreen: React.FC<Props> = ({ navigation }) => {
                     <Card style={styles.monthCard}>
                         <Card.Content>
                             <Text style={styles.monthLabel}>This Month</Text>
-                            <Text style={styles.monthValue}>₹{(stats.monthSales / 100000).toFixed(2)}L</Text>
+                            <Text style={styles.monthValue}>₹{(stats.monthSales / 100000)?.toFixed(2)}L</Text>
                         </Card.Content>
                     </Card>
                 </View>
@@ -274,7 +274,7 @@ const DashboardScreen: React.FC<Props> = ({ navigation }) => {
                                             </View>
                                         </View>
                                         <View style={styles.invoiceRightModern}>
-                                            <Text style={styles.invoiceAmountModern}>₹{invoice.totalAmount.toFixed(0)}</Text>
+                                            <Text style={styles.invoiceAmountModern}>₹{invoice.totalAmount?.toFixed(0)}</Text>
                                             <Chip
                                                 mode="flat"
                                                 style={[styles.statusChipModern, { backgroundColor: getStatusColor(invoice.status) }]}

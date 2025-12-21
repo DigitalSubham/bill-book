@@ -281,7 +281,7 @@ const CreateInvoiceScreen: React.FC<Props> = ({ navigation }) => {
                       }
                     />
                     <Text variant="bodyLarge" style={styles.amount}>
-                      ₹{item.amount.toFixed(2)}
+                      ₹{item.amount?.toFixed(2)}
                     </Text>
                     <IconButton
                       icon="delete"
@@ -309,15 +309,15 @@ const CreateInvoiceScreen: React.FC<Props> = ({ navigation }) => {
             <Card.Content>
               <View style={styles.totalRow}>
                 <Text variant="bodyMedium">Subtotal</Text>
-                <Text variant="bodyMedium">₹{totals.subtotal.toFixed(2)}</Text>
+                <Text variant="bodyMedium">₹{totals.subtotal?.toFixed(2)}</Text>
               </View>
               <View style={styles.totalRow}>
                 <Text variant="bodyMedium">CGST</Text>
-                <Text variant="bodyMedium">₹{totals.cgst.toFixed(2)}</Text>
+                <Text variant="bodyMedium">₹{totals.cgst?.toFixed(2)}</Text>
               </View>
               <View style={styles.totalRow}>
                 <Text variant="bodyMedium">SGST</Text>
-                <Text variant="bodyMedium">₹{totals.sgst.toFixed(2)}</Text>
+                <Text variant="bodyMedium">₹{totals.sgst?.toFixed(2)}</Text>
               </View>
               <Divider style={styles.divider} />
               <View style={styles.totalRow}>
@@ -325,7 +325,7 @@ const CreateInvoiceScreen: React.FC<Props> = ({ navigation }) => {
                   Total
                 </Text>
                 <Text variant="titleLarge" style={styles.totalAmount}>
-                  ₹{totals.totalAmount.toFixed(2)}
+                  ₹{totals.totalAmount?.toFixed(2)}
                 </Text>
               </View>
               <TextInput

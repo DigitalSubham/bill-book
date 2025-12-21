@@ -41,13 +41,13 @@ const BusinessSettingsScreen: React.FC<Props> = ({ navigation }) => {
             queryClient.invalidateQueries({ queryKey: ['business'] });
 
         },
-        onError: () => {
+        onError: (err) => {
+            console.log("err", err)
             Alert.alert('Error', 'Failed to update business settings');
         },
 
     });
 
-    console.log("business", business)
 
     const [formData, setFormData] = useState({
         name: business?.name || '',
@@ -93,6 +93,9 @@ const BusinessSettingsScreen: React.FC<Props> = ({ navigation }) => {
         if (!formData.address.trim()) {
             newErrors.address = 'Address is required';
         }
+        if (!formData.upiId.trim()) {
+            newErrors.address = 'UPI is required';
+        }
 
         if (!formData.mobile.trim()) {
             newErrors.mobile = 'Mobile number is required';
@@ -108,7 +111,7 @@ const BusinessSettingsScreen: React.FC<Props> = ({ navigation }) => {
             formData.gst_number &&
             !/^\d{2}[A-Z]{5}\d{4}[A-Z][1-9A-Z]Z[\dA-Z]$/.test(formData.gst_number)
         ) {
-            newErrors.gst_number = 'Invalid gst_number format';
+            newErrors.gst_number = 'Invalid gst number format';
         }
 
         if (
@@ -123,6 +126,18 @@ const BusinessSettingsScreen: React.FC<Props> = ({ navigation }) => {
             !/^[A-Z]{4}0[A-Z0-9]{6}$/.test(formData.ifscCode)
         ) {
             newErrors.ifscCode = 'Invalid IFSC code';
+        }
+        if (
+            formData.accountNo &&
+            !/^\d{9,18}$/.test(formData.accountNo)
+        ) {
+            newErrors.accountNo = 'Invalid Account Number';
+        }
+        if (
+            formData.upiId &&
+            !/^[\w.-]+@[\w]+$/.test(formData.upiId)
+        ) {
+            newErrors.upiId = 'Invalid UPI';
         }
 
         setErrors(newErrors);
@@ -357,6 +372,7 @@ const BusinessSettingsScreen: React.FC<Props> = ({ navigation }) => {
                             style={styles.input}
                         />
 
+
                         <TextInput
                             label="Account Number"
                             value={formData.accountNo}
@@ -365,6 +381,11 @@ const BusinessSettingsScreen: React.FC<Props> = ({ navigation }) => {
                             keyboardType="numeric"
                             style={styles.input}
                         />
+                        {!!errors.accountNo && (
+                            <Text variant="bodySmall" style={styles.errorText}>
+                                {errors.accountNo}
+                            </Text>
+                        )}
 
                         <TextInput
                             label="IFSC Code"
@@ -396,6 +417,12 @@ const BusinessSettingsScreen: React.FC<Props> = ({ navigation }) => {
                         <Text variant="bodySmall" style={styles.helperText}>
                             Example: 9934646569@ptsbi
                         </Text>
+
+                        {!!errors.upiId && (
+                            <Text variant="bodySmall" style={styles.errorText}>
+                                {errors.upiId}
+                            </Text>
+                        )}
 
                         {formData.upiId && (
                             <View style={styles.qrContainer}>

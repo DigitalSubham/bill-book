@@ -143,7 +143,7 @@ const CustomerListScreen: React.FC<Props> = ({ navigation }) => {
                         <View style={styles.statBox}>
                             <Text style={styles.statLabel}>Sales</Text>
                             <Text style={styles.statValue}>
-                                ₹{stats.totalAmount.toFixed(0)}
+                                ₹{stats.totalAmount?.toFixed(0)}
                             </Text>
                         </View>
 
@@ -151,7 +151,7 @@ const CustomerListScreen: React.FC<Props> = ({ navigation }) => {
 
                         <View style={styles.statBox}>
                             <Text style={[styles.statValue, styles.pending]}>
-                                ₹{stats.pendingAmount.toFixed(0)}
+                                ₹{stats.pendingAmount?.toFixed(0)}
                             </Text>
                             <Text style={styles.statLabel}>Pending</Text>
                         </View>

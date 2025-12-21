@@ -9,22 +9,19 @@ export const generateInvoicePDF = async (
   business: any,
   qrcode: any,
 ) => {
-  console.log('invoicebvhjkvkjj', invoice, business);
-
   const busi = {
-    name: business.name ?? 'Subham Store',
-    address: business.address ?? 'Patna City',
-    mobile: business.mobile ?? '9934646569',
-    email: 'gitanjalienterprises032@gmail.com',
-    gst_number: business.gst_number ?? '10FNZPS6138A1ZS',
-    pan: 'FNZPS6138A',
+    name: business.name,
+    address: business.address,
+    mobile: business.mobile,
+    email: business.email,
+    gst_number: business.gst_number,
+    pan: business.pan_number,
 
-    bankName: business.bank ?? 'Gitanjali Enterprises',
-    ifsc: business.ifsc ?? 'BKID0006254',
-    accountNumber: business.account_no ?? '625420110000217',
-    bankBranch: '',
+    bankName: business.bank,
+    ifsc: business.ifsc,
+    accountNumber: business.account_no,
 
-    upiId: business.upi_id ?? '8340753119@ybl',
+    upiId: business.upi_id,
     qrCode: qrcode,
   };
 
@@ -33,21 +30,23 @@ export const generateInvoicePDF = async (
     invoiceDate: invoice.invoice_date,
     dueDate: invoice.due_date,
 
-    customerName: invoice.customer.name ?? 'New E Kirana',
-    customerAddress:
-      invoice.customer.address ?? 'Near State Bank, Kiadwai Puri, Patna',
-    customerMobile: invoice.customer.mobile ?? '8434861924',
+    customerName: invoice.customer.name,
+    customerAddress: invoice.customer.address,
+    customerGST: invoice.customer.gst_number,
+    customerMobile: invoice.customer.mobile,
     placeOfSupply: invoice.customer.address,
     items: invoice.items,
     taxableAmount: invoice.total_amount - invoice.total_tax,
-    cgst: invoice.cgst_total ?? 51.53,
-    sgst: invoice.sgst_total ?? 51.53,
-    totalTax: invoice.total_tax ?? 103.06,
-    totalAmount: invoice.total_amount ?? 2164.2,
-    receivedAmount: 0,
+    cgst: invoice.cgst || invoice.cgst_total,
+    sgst: invoice.sgst || invoice.sgst_total,
+    totalTax: invoice.total_tax || invoice.totalAmount - invoice.taxableAmount,
+    totalAmount: invoice.totalAmount || invoice.total_amount,
+    receivedAmount: invoice.receivedAmount,
 
     totalAmountWords: convertAmountToWords(invoice.total_amount),
   };
+
+  console.log('inv', invoice);
 
   try {
     const file = await RNHTMLtoPDF.generatePDF({

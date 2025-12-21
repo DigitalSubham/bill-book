@@ -20,8 +20,7 @@ export const useVerifyOtp = () =>
     mutationFn: ({ mobile, otp }: any) => verifyOtpApi(mobile, otp),
     onSuccess: async res => {
       const token = res.data.token;
-
-      await saveToken(token); // Save JWT token
+      await saveToken(token);
     },
   });
 
