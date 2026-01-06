@@ -1,4 +1,4 @@
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 
 import { removeToken, saveToken } from '../utils/storage';
 import {
@@ -9,6 +9,7 @@ import {
 } from '../apis/authApi';
 import { logout, setToken } from '../redux/slices/authSlice';
 import { useAppDispatch } from '../redux/hooks';
+const queryClient = useQueryClient();
 
 export const useSendOtp = () =>
   useMutation({
@@ -47,6 +48,7 @@ export const useLogout = () => {
   return useMutation({
     mutationFn: async () => {
       await removeToken();
+      queryClient.clear();
       dispatch(logout());
     },
   });

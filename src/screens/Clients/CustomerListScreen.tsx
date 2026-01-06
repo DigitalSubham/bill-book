@@ -1,4 +1,3 @@
-// src/screens/customers/CustomerListScreen.tsx
 import React, { useState } from 'react';
 import {
     View,
@@ -14,11 +13,11 @@ import {
     Avatar,
     Chip,
 } from 'react-native-paper';
-import { useSelector } from 'react-redux';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { RootStackParamList, Invoice, CustomerFormData } from '../../types';
+import { RootStackParamList, CustomerType, formTypeEnum } from '../../types';
 import { useQuery } from '@tanstack/react-query';
 import { fetchCustomer } from '../../apis/customerApis';
+import Loader from '../../components/common/Loader';
 
 type CustomerListScreenNavigationProp = NativeStackNavigationProp<
     RootStackParamList,
@@ -32,12 +31,11 @@ interface Props {
 const CustomerListScreen: React.FC<Props> = ({ navigation }) => {
     const [searchQuery, setSearchQuery] = useState('');
 
-    const { data: customers = [], isLoading } = useQuery({
+    const { data: customers = [], isLoading, refetch, isFetching } = useQuery({
         queryKey: ['customers'],
         queryFn: () => fetchCustomer(),
-        staleTime: 5 * 60 * 1000,
+        staleTime: 0,
     })
-    const invoices = useSelector((state: any) => state.invoices.list) as Invoice[];
 
     const filteredCustomers = customers.filter(
         (customer: any) =>
@@ -45,39 +43,24 @@ const CustomerListScreen: React.FC<Props> = ({ navigation }) => {
             customer.mobile.includes(searchQuery) ||
             customer.email?.toLowerCase().includes(searchQuery.toLowerCase())
     );
+    console.log("customers", customers)
 
-    const getCustomerStats = (customerId: string) => {
-        const customerInvoices = invoices.filter(inv => inv.id === customerId);
-        const totalAmount = customerInvoices.reduce((sum, inv) => sum + inv.totalAmount, 0);
-        const pendingAmount = customerInvoices
-            .filter(inv => inv.status === 'pending' || inv.status === 'partial')
-            .reduce((sum, inv) => sum + (inv.totalAmount - inv.receivedAmount), 0);
-
-        return {
-            totalInvoices: customerInvoices.length,
-            totalAmount,
-            pendingAmount,
-        };
-    };
 
     if (isLoading) {
         return (
-            <View style={styles.loadingContainer}>
-                <Text variant="titleMedium">Loading products...</Text>
-            </View>
+            <Loader text="Loading customers..." />
         );
     }
 
-    const renderCustomer = ({ item }: { item: CustomerFormData }) => {
+    const renderCustomer = ({ item }: { item: CustomerType }) => {
         if (!item.id) return null;
-        const stats = getCustomerStats(item.id);
 
         return (
             <Card
                 mode="outlined"
                 style={styles.card}
                 onPress={() =>
-                    navigation.navigate("CustomerForm", { customerId: item.id, formType: 'edit' })
+                    navigation.navigate("CustomerForm", { customerId: item.id, formType: formTypeEnum.EDIT })
                 }
             >
                 <Card.Content style={styles.cardContent}>
@@ -122,7 +105,7 @@ const CustomerListScreen: React.FC<Props> = ({ navigation }) => {
                             onPress={() =>
                                 navigation.navigate("CustomerForm", {
                                     customerId: item.id,
-                                    formType: 'edit',
+                                    formType: formTypeEnum.EDIT,
                                 })
                             }
                             style={styles.editCircle}
@@ -132,7 +115,7 @@ const CustomerListScreen: React.FC<Props> = ({ navigation }) => {
                     </View>
 
                     {/* STATS */}
-                    <View style={styles.stats}>
+                    {/* <View style={styles.stats}>
                         <View style={styles.statBox}>
                             <Text style={styles.statLabel}>Inv</Text>
                             <Text style={styles.statValue}>{stats.totalInvoices}</Text>
@@ -155,7 +138,7 @@ const CustomerListScreen: React.FC<Props> = ({ navigation }) => {
                             </Text>
                             <Text style={styles.statLabel}>Pending</Text>
                         </View>
-                    </View>
+                    </View> */}
 
 
                     <View style={styles.gstRow}>
@@ -182,10 +165,13 @@ const CustomerListScreen: React.FC<Props> = ({ navigation }) => {
             />
 
 
-            {filteredCustomers.length > 0 && <FlatList
+
+            <FlatList
+                onRefresh={refetch}
+                refreshing={isFetching}
                 data={filteredCustomers}
                 renderItem={renderCustomer}
-                keyExtractor={(item) => item.id!}
+                keyExtractor={(item) => item.id}
                 contentContainerStyle={styles.list}
                 ListEmptyComponent={
                     <View style={styles.emptyContainer}>
@@ -202,12 +188,12 @@ const CustomerListScreen: React.FC<Props> = ({ navigation }) => {
                         </Text>
                     </View>
                 }
-            />}
+            />
 
             <Fab
                 icon="plus"
                 style={styles.fab}
-                onPress={() => navigation.navigate('CustomerForm', { formType: 'add' })}
+                onPress={() => navigation.navigate('CustomerForm', { formType: formTypeEnum.ADD })}
                 label="Add Customer"
             />
         </View>
@@ -384,7 +370,6 @@ const styles = StyleSheet.create({
         right: 0,
         bottom: 0,
     },
-    loadingContainer: { flex: 1, justifyContent: "center", alignItems: "center" },
 
 });
 

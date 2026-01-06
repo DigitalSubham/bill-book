@@ -50,7 +50,7 @@ const LoginScreen = ({ navigation }: any) => {
             return;
         }
 
-        emailLoginMutation.mutate({ email, password }, {
+        emailLoginMutation.mutate({ email: email.trim(), password: password.trim() }, {
             onSuccess: () => {
                 navigation.navigate("OTPVerification", { mobile });
             },

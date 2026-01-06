@@ -1,18 +1,18 @@
 import { StyleSheet, View } from 'react-native'
 import React from 'react'
 import { Card, Chip, IconButton, Text } from 'react-native-paper'
-import { Product } from '../../types'
+import { formTypeEnum, ProductType } from '../../types'
 import { useNavigation } from '@react-navigation/native'
 import { ProductListScreenNavigationProp } from '../../screens/Inventory/ProductListScreen'
 
-const ProductCard = ({ item }: { item: Product }) => {
+const ProductCard = ({ item }: { item: ProductType }) => {
     const isLowStock = item.minStock && item.stock <= item.minStock
     const navigation = useNavigation<ProductListScreenNavigationProp>()
 
     return (
         <Card
             style={styles.card}
-            onPress={() => navigation.navigate("ProductForm", { productId: item.id, formType: "edit" })}
+            onPress={() => navigation.navigate("ProductForm", { productId: item.id, formType: formTypeEnum.EDIT })}
         >
             <Card.Content style={styles.content}>
                 <View style={styles.topRow}>
@@ -30,7 +30,7 @@ const ProductCard = ({ item }: { item: Product }) => {
                         icon="pencil"
                         size={20}
                         onPress={() =>
-                            navigation.navigate("ProductForm", { productId: item.id, formType: "edit" })
+                            navigation.navigate("ProductForm", { productId: item.id, formType: formTypeEnum.EDIT })
                         }
                         style={styles.editIcon}
                     />
@@ -44,12 +44,14 @@ const ProductCard = ({ item }: { item: Product }) => {
 
                 <View style={styles.stockRow}>
                     <Chip
+                        compact
                         icon={isLowStock ? "alert" : "package-variant"}
-                        style={[styles.stockChip, !!isLowStock && styles.lowStockChip]}
-                        textStyle={[styles.stockText, !!isLowStock && styles.lowStockText]}
+                        style={[styles.stockChip, isLowStock ? styles.lowStockChip : null]}
+                        textStyle={[styles.stockText, isLowStock ? styles.lowStockText : null]}
                     >
                         {item.stock} {item.unit}
                     </Chip>
+
                     {isLowStock && (
                         <Chip style={styles.alertChip} textStyle={styles.alertText} compact>
                             LOW
@@ -105,28 +107,37 @@ const styles = StyleSheet.create({
     },
     stockChip: {
         backgroundColor: '#e3f2fd',
-        height: 28,       // slightly taller
-        paddingHorizontal: 8,
+        height: 28,
+        paddingHorizontal: 0,
+        paddingVertical: 0,
         justifyContent: 'center',
+        alignItems: 'center',
+        alignSelf: 'flex-start',
     },
     stockText: {
         fontSize: 12,
+        lineHeight: 14,
     },
     lowStockChip: {
         backgroundColor: '#ffebee',
     },
     lowStockText: {
         color: '#f44336',
-        fontSize: 12,
     },
     alertChip: {
         backgroundColor: '#f44336',
         height: 28,
+        paddingHorizontal: 0,
         justifyContent: 'center',
+        alignSelf: 'flex-start',
+        alignItems: 'center',
     },
+
     alertText: {
-        color: '#fff',
         fontSize: 10,
+        lineHeight: 12,
+        color: '#fff',
     },
+
 
 })

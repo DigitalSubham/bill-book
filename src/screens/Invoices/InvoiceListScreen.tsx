@@ -15,9 +15,11 @@ import {
     Avatar,
 } from 'react-native-paper';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { RootStackParamList } from '../../types';
+import { formTypeEnum, RootStackParamList } from '../../types';
 import { useQuery } from '@tanstack/react-query';
 import { fetchInvoices } from '../../apis/InvoiceApis';
+import Loader from '../../components/common/Loader';
+import { formatDate } from '../../utils/helper';
 
 type InvoiceListScreenNavigationProp = NativeStackNavigationProp<
     RootStackParamList,
@@ -32,7 +34,7 @@ const InvoiceListScreen: React.FC<Props> = ({ navigation }) => {
     const [searchQuery, setSearchQuery] = useState('');
     const [filterStatus, setFilterStatus] = useState<string>('all');
 
-    const { data: invoices } = useQuery({
+    const { data: invoices, isLoading, refetch, isFetching } = useQuery({
         queryKey: ['invoices'],
         queryFn: fetchInvoices,
     })
@@ -56,51 +58,59 @@ const InvoiceListScreen: React.FC<Props> = ({ navigation }) => {
 
     const renderInvoice = ({ item }: { item: any }) => {
         const isOverdue =
-            item.status !== 'paid' && new Date(item.dueDate) < new Date();
+            item.paymentStatus !== 'paid' && new Date(item.dueDate) < new Date();
         return (
             <Card
                 style={styles.invoiceCard}
                 onPress={() =>
-                    navigation.navigate('InvoicePreview', { invoice: item, formType: "edit" })
+                    navigation.navigate('InvoicePreview', { invoice: item, formType: formTypeEnum.EDIT })
                 }>
                 <Card.Content>
                     <View style={styles.invoiceHeader}>
                         <View style={styles.invoiceLeft}>
                             <Text variant="titleSmall" style={styles.invoiceNumber}>
-                                #{item.invoice_number}
+                                #{item.invoiceNumber}
                             </Text>
                             <Text variant="bodyMedium" style={styles.customerName}>
                                 {item.customer.name}
                             </Text>
                             <Text variant="bodySmall" style={styles.invoiceDate}>
-                                {new Date(item?.invoice_date)?.toLocaleDateString('en-IN')}
+                                {`${formatDate(item.invoiceDate)} - ${formatDate(item.dueDate)}`}
+
                             </Text>
                         </View>
                         <View style={styles.invoiceRight}>
                             <Text variant="titleLarge" style={styles.amount}>
-                                ₹{item?.total_amount}
+                                ₹{item?.totalAmount}
                             </Text>
                             <Chip
                                 mode="flat"
+                                compact
                                 style={[
                                     styles.statusChip,
-                                    { backgroundColor: getStatusColor(isOverdue ? 'overdue' : item.status) },
+                                    { backgroundColor: getStatusColor(isOverdue ? 'overdue' : item.paymentStatus) },
                                 ]}
                                 textStyle={styles.chipText}>
-                                {isOverdue ? 'OVERDUE' : item?.status?.toUpperCase()}
+                                {isOverdue ? 'OVERDUE' : item?.paymentStatus?.toUpperCase() || 'N/A'}
                             </Chip>
                         </View>
                     </View>
 
                     <View style={styles.itemsPreview}>
                         <Text variant="bodySmall" style={styles.itemsText}>
-                            {item.items.length} item(s) • {item?.customer?.address}
+                            {item.items.length} item(s)
                         </Text>
                     </View>
                 </Card.Content>
             </Card >
         );
     };
+
+    if (isLoading) {
+        return (
+            <Loader text="Loading invoices..." />
+        );
+    }
 
     return (
         <View style={styles.container}>
@@ -118,6 +128,7 @@ const InvoiceListScreen: React.FC<Props> = ({ navigation }) => {
                     buttons={[
                         { value: 'all', label: 'All' },
                         { value: 'pending', label: 'Pending' },
+                        { value: 'partial', label: 'Partial' },
                         { value: 'paid', label: 'Paid' },
                     ]}
                     style={styles.segmentedButtons}
@@ -126,6 +137,8 @@ const InvoiceListScreen: React.FC<Props> = ({ navigation }) => {
 
             <FlatList
                 data={invoices}
+                onRefresh={refetch}
+                refreshing={isFetching}
                 renderItem={renderInvoice}
                 keyExtractor={(item) => item.id}
                 contentContainerStyle={styles.list}
@@ -209,11 +222,17 @@ const styles = StyleSheet.create({
     statusChip: {
         marginTop: 8,
         height: 28,
+        paddingVertical: 0,      // 🔑 remove extra vertical padding
+        justifyContent: "center",
     },
+
     chipText: {
         fontSize: 11,
-        color: '#fff',
+        color: "#fff",
+        lineHeight: 14,          // 🔑 critical
+        paddingVertical: 0,
     },
+
     balanceContainer: {
         backgroundColor: '#fff3e0',
         padding: 8,

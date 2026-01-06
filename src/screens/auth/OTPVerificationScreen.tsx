@@ -115,7 +115,7 @@ export const OTPVerificationScreen: React.FC<OTPVerificationProps> = ({
                         <View style={styles.otpContainer}>
                             {otp.map((digit, index) => (
                                 <TextInput
-                                    key={index}
+                                    key={`${index}-${digit}`}
                                     ref={(ref: any) => (inputRefs.current[index] = ref)}
                                     value={digit}
                                     onChangeText={(text) => handleOTPChange(text, index)}
@@ -138,17 +138,18 @@ export const OTPVerificationScreen: React.FC<OTPVerificationProps> = ({
                         </Button>
 
                         <View style={styles.resendContainer}>
-                            {!canResend ? (
-                                <Text variant="bodyMedium" style={styles.timerText}>
-                                    Resend OTP in {timer}s
-                                </Text>
-                            ) : (
+                            {canResend ? (
                                 <Button
                                     mode="text"
                                     onPress={handleResendOTP}
                                     disabled={!canResend}>
                                     Resend OTP
                                 </Button>
+                            ) : (
+                                <Text variant="bodyMedium" style={styles.timerText}>
+                                    Resend OTP in {timer}s
+                                </Text>
+
                             )}
                         </View>
 

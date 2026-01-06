@@ -5,7 +5,6 @@ import {
     StyleSheet,
     ScrollView,
     Alert,
-    TouchableOpacity,
 } from 'react-native';
 import {
     TextInput,
@@ -14,15 +13,14 @@ import {
     Card,
     HelperText,
     Chip,
-    Menu,
 } from 'react-native-paper';
-
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-
-import { RootStackParamList, Product } from '../../types';
+import { RootStackParamList, ProductType, ProductBaseType, formTypeEnum } from '../../types';
 
 import { createProduct, fetchProductById, updateProduct } from '../../apis/productApis';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { errorToast, successToast } from '../../utils/toast';
+import AppDropdownPicker from '../../components/common/Dropdown';
 
 type AddProductScreenNavigationProp = NativeStackNavigationProp<
     RootStackParamList
@@ -31,7 +29,7 @@ type AddProductScreenNavigationProp = NativeStackNavigationProp<
 interface Props {
     navigation: AddProductScreenNavigationProp;
     route: {
-        params: { productId?: string, formType: string };
+        params: { productId?: string, formType: formTypeEnum };
     }
 }
 
@@ -41,11 +39,32 @@ interface FormErrors {
     rate?: string;
     taxRate?: string;
     stock?: string;
+    unit?: string
 }
 
-const UNITS = ['PCS', 'KG', 'LITER', 'METER', 'BOX', 'PACK', 'DOZEN'];
-const CATEGORIES = ['General', 'Electronics', 'Clothing', 'Food', 'Stationery', 'Hardware', 'Other'];
+export const UNIT_OPTIONS = [
+    { label: 'PCS', value: 'PCS' },
+    { label: 'KG', value: 'KG' },
+    { label: 'LITER', value: 'LITER' },
+    { label: 'METER', value: 'METER' },
+    { label: 'BOX', value: 'BOX' },
+    { label: 'PACK', value: 'PACK' },
+    { label: 'DOZEN', value: 'DOZEN' },
+];
+
+export const CATEGORY_OPTIONS = [
+    { label: 'General', value: 'General' },
+    { label: 'Electronics', value: 'Electronics' },
+    { label: 'Clothing', value: 'Clothing' },
+    { label: 'Food', value: 'Food' },
+    { label: 'Stationery', value: 'Stationery' },
+    { label: 'Hardware', value: 'Hardware' },
+    { label: 'Other', value: 'Other' },
+];
+
+
 const TAX_RATES = ['0.00', '5.00', '12.00', '18.00', '28.00'];
+
 
 const AddProductScreen: React.FC<Props> = ({ navigation, route }) => {
     const isEditMode = route?.params?.productId !== undefined;
@@ -59,14 +78,12 @@ const AddProductScreen: React.FC<Props> = ({ navigation, route }) => {
     });
 
 
-
-
-    const [formData, setFormData] = useState<Product>({
+    const [formData, setFormData] = useState<ProductBaseType>({
         name: '',
         description: '',
         mrp: '',
         rate: '',
-        taxRate: 5,
+        taxRate: "5.00",
         unit: 'PCS',
         stock: 0,
         minStock: 10,
@@ -76,13 +93,11 @@ const AddProductScreen: React.FC<Props> = ({ navigation, route }) => {
     });
 
     const [errors, setErrors] = useState<FormErrors>({});
-    const [unitMenuVisible, setUnitMenuVisible] = useState(false);
-    const [categoryMenuVisible, setCategoryMenuVisible] = useState(false);
     const queryClient = useQueryClient();
 
 
     const createProductMutation = useMutation({
-        mutationFn: (product: Product) => createProduct({
+        mutationFn: (product: ProductBaseType) => createProduct({
             name: product.name,
             description: product.description,
             selling_rate: product.rate,
@@ -103,7 +118,7 @@ const AddProductScreen: React.FC<Props> = ({ navigation, route }) => {
     });
 
     const updateProductMutation = useMutation({
-        mutationFn: (product: Product) => updateProduct(product.id!, {
+        mutationFn: (product: ProductType) => updateProduct(product.id, {
             name: product.name,
             description: product.description,
             selling_rate: product.rate,
@@ -215,42 +230,35 @@ const AddProductScreen: React.FC<Props> = ({ navigation, route }) => {
         if (isEditMode) {
             updateProductMutation.mutate(productData, {
                 onSuccess: () => {
-                    Alert.alert('Success', 'Product updated successfully', [
-                        { text: 'OK', onPress: () => navigation.goBack() },
-                    ]);
+                    successToast("Product updated successfully")
+                    navigation.goBack()
                 },
                 onError: (err: any) => {
-                    Alert.alert('Error', err.message || 'Failed to update product');
+                    errorToast(err.message || 'Failed to update product')
                 },
             });
         } else {
             createProductMutation.mutate(productData, {
                 onSuccess: () => {
-                    Alert.alert('Success', 'Product added successfully', [
-                        {
-                            text: 'Add Another',
-                            onPress: () => {
-                                setFormData({
-                                    name: '',
-                                    description: '',
-                                    mrp: '',
-                                    rate: '',
-                                    taxRate: 5,
-                                    unit: 'PCS',
-                                    stock: 0,
-                                    minStock: 10,
-                                    category: 'General',
-                                    barcode: '',
-                                    hsnCode: '',
-                                });
-                                setErrors({});
-                            },
-                        },
-                        { text: 'Done', onPress: () => navigation.goBack() },
-                    ]);
+                    successToast("Product added successfully")
+                    setFormData({
+                        name: '',
+                        description: '',
+                        mrp: '',
+                        rate: '',
+                        taxRate: "5.00",
+                        unit: 'PCS',
+                        stock: 0,
+                        minStock: 10,
+                        category: 'General',
+                        barcode: '',
+                        hsnCode: '',
+                    });
+                    setErrors({});
+                    navigation.goBack()
                 },
                 onError: (err: any) => {
-                    Alert.alert('Error', err.message || 'Failed to add product');
+                    errorToast(err.message || 'Failed to create product');
                 },
             });
         }
@@ -274,7 +282,7 @@ const AddProductScreen: React.FC<Props> = ({ navigation, route }) => {
         );
     };
 
-    const updateFormData = (field: keyof Product, value: string) => {
+    const updateFormData = (field: keyof ProductType, value: string) => {
         setFormData({ ...formData, [field]: value });
         if (errors[field as keyof FormErrors]) {
             setErrors({ ...errors, [field]: undefined });
@@ -318,33 +326,14 @@ const AddProductScreen: React.FC<Props> = ({ navigation, route }) => {
                         />
 
                         {/* Category Selection */}
-                        <Menu
-                            visible={categoryMenuVisible}
-                            onDismiss={() => setCategoryMenuVisible(false)}
-                            anchor={
-                                <TouchableOpacity onPress={() => setCategoryMenuVisible(true)}>
-                                    <TextInput
-                                        label="Category"
-                                        value={formData.category}
-                                        mode="outlined"
-                                        style={styles.input}
-                                        editable={false}
-                                        right={<TextInput.Icon icon="chevron-down" />}
-                                    />
-                                </TouchableOpacity>
-                            }>
-                            {CATEGORIES.map((cat) => (
-                                <Menu.Item
-                                    key={cat}
-                                    onPress={() => {
-                                        updateFormData('category', cat);
-                                        setCategoryMenuVisible(false);
-                                    }}
-                                    title={cat}
-                                    leadingIcon={formData.category === cat ? 'check' : undefined}
-                                />
-                            ))}
-                        </Menu>
+                        <AppDropdownPicker
+                            label="Category"
+                            value={formData.category}
+                            items={CATEGORY_OPTIONS}
+                            onChange={(value) => updateFormData('category', value)}
+                            zIndex={3000}
+                        />
+
                     </Card.Content>
                 </Card>
 
@@ -466,33 +455,15 @@ const AddProductScreen: React.FC<Props> = ({ navigation, route }) => {
                         </View>
 
                         {/* Unit Selection */}
-                        <Menu
-                            visible={unitMenuVisible}
-                            onDismiss={() => setUnitMenuVisible(false)}
-                            anchor={
-                                <TouchableOpacity onPress={() => setUnitMenuVisible(true)}>
-                                    <TextInput
-                                        label="Unit *"
-                                        value={formData.unit}
-                                        mode="outlined"
-                                        style={styles.input}
-                                        editable={false}
-                                        right={<TextInput.Icon icon="chevron-down" />}
-                                    />
-                                </TouchableOpacity>
-                            }>
-                            {UNITS.map((unit) => (
-                                <Menu.Item
-                                    key={unit}
-                                    onPress={() => {
-                                        updateFormData('unit', unit);
-                                        setUnitMenuVisible(false);
-                                    }}
-                                    title={unit}
-                                    leadingIcon={formData.unit === unit ? 'check' : undefined}
-                                />
-                            ))}
-                        </Menu>
+                        <AppDropdownPicker
+                            label="Unit *"
+                            value={formData.unit}
+                            items={UNIT_OPTIONS}
+                            onChange={(value) => updateFormData('unit', value)}
+                            error={errors.unit}
+                            zIndex={2000}
+                        />
+
 
                         <HelperText type="info">
                             You'll be notified when stock falls below minimum level
@@ -541,6 +512,7 @@ const AddProductScreen: React.FC<Props> = ({ navigation, route }) => {
                     </Button>
                     <Button
                         mode="contained"
+                        loading={createProductMutation.isPending || updateProductMutation.isPending}
                         onPress={handleSubmit}
                         style={styles.button}
                         icon="content-save">

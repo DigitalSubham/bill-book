@@ -5,21 +5,16 @@ import {
     StyleSheet,
     ScrollView,
     Alert,
-    Image,
 } from 'react-native';
 import {
     Text,
     TextInput,
     Button,
     Card,
-    Avatar,
-    Divider,
 } from 'react-native-paper';
-import { launchImageLibrary } from 'react-native-image-picker';
 import QRCode from 'react-native-qrcode-svg';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { getProfileApi, updateProfileApi } from '../../apis/authApi';
-import { useLogout } from '../../hooks/useAuth';
 
 interface Props {
     navigation: any;
@@ -27,7 +22,7 @@ interface Props {
 
 const BusinessSettingsScreen: React.FC<Props> = ({ navigation }) => {
     const queryClient = useQueryClient();
-    const logoutMutation = useLogout();
+
 
     const { data: business } = useQuery({
         queryKey: ['business'],
@@ -60,7 +55,6 @@ const BusinessSettingsScreen: React.FC<Props> = ({ navigation }) => {
         accountNo: business?.account_no || '',
         ifscCode: business?.ifsc || '',
         upiId: business?.upi_id || '',
-        logo: business?.logo || '',
     });
 
     useEffect(() => {
@@ -76,7 +70,6 @@ const BusinessSettingsScreen: React.FC<Props> = ({ navigation }) => {
                 accountNo: business?.account_no || '',
                 ifscCode: business?.ifsc || '',
                 upiId: business?.upi_id || '',
-                logo: business.logo || '',
             });
         }
     }, [business]);
@@ -160,65 +153,14 @@ const BusinessSettingsScreen: React.FC<Props> = ({ navigation }) => {
             ifsc: formData.ifscCode,
             upi_id: formData.upiId,
         }
-
         saveMutation.mutate(payload);
     };
 
-    const handleSelectLogo = () => {
-        launchImageLibrary(
-            {
-                mediaType: 'photo',
-                quality: 0.8,
-                maxWidth: 500,
-                maxHeight: 500,
-            },
-            (response) => {
-                if (response?.assets?.[0]) {
-                    setFormData({
-                        ...formData,
-                        logo: response.assets[0].uri || '',
-                    });
-                }
-            }
-        );
-    };
+
 
     return (
         <View style={styles.container}>
             <ScrollView>
-                {/* Logo Section */}
-                <Card style={styles.card}>
-                    <Card.Content>
-                        <Text variant="titleMedium" style={styles.sectionTitle}>
-                            Business Logo
-                        </Text>
-                        <View style={styles.logoContainer}>
-                            {formData.logo ? (
-                                <Image source={{ uri: formData.logo }} style={styles.logo} />
-                            ) : (
-                                <Avatar.Icon size={100} icon="store" style={styles.logoPlaceholder} />
-                            )}
-                            <View style={styles.logoButtons}>
-                                <Button
-                                    mode="outlined"
-                                    icon="image"
-                                    onPress={handleSelectLogo}
-                                    style={styles.logoButton}>
-                                    {formData.logo ? 'Change Logo' : 'Upload Logo'}
-                                </Button>
-                                {formData.logo && (
-                                    <Button
-                                        mode="text"
-                                        icon="delete"
-                                        onPress={() => setFormData({ ...formData, logo: '' })}
-                                        textColor="#f44336">
-                                        Remove
-                                    </Button>
-                                )}
-                            </View>
-                        </View>
-                    </Card.Content>
-                </Card>
 
                 {/* Basic Information */}
                 <Card style={styles.card}>
@@ -454,47 +396,6 @@ const BusinessSettingsScreen: React.FC<Props> = ({ navigation }) => {
                         Save Settings
                     </Button>
                 </View>
-
-                {/* Additional Options */}
-                <Card style={styles.card}>
-                    <Card.Content>
-
-                        <Button
-                            mode="outlined"
-                            icon="backup-restore"
-                            onPress={() => Alert.alert('Backup', 'Coming soon')}
-                            style={styles.optionButton}>
-                            Backup & Restore
-                        </Button>
-
-                        <Divider style={styles.divider} />
-
-                        <Button
-                            mode="text"
-                            icon="logout"
-                            textColor="#f44336"
-                            onPress={() =>
-                                Alert.alert(
-                                    'Logout',
-                                    'Are you sure you want to logout?',
-                                    [
-                                        { text: 'Cancel', style: 'cancel' },
-                                        {
-                                            text: 'Logout',
-                                            style: 'destructive',
-                                            onPress: () => {
-                                                logoutMutation.mutate();
-                                            },
-                                        },
-                                    ]
-                                )
-                            }
-                            style={styles.optionButton}>
-                            Logout
-                        </Button>
-                    </Card.Content>
-                </Card>
-
                 <View style={styles.bottomSpace} />
             </ScrollView>
         </View>
@@ -568,13 +469,6 @@ const styles = StyleSheet.create({
     },
     saveButton: {
         paddingVertical: 6,
-    },
-    optionButton: {
-        marginBottom: 12,
-        justifyContent: 'flex-start',
-    },
-    divider: {
-        marginVertical: 12,
     },
     bottomSpace: {
         height: 20,

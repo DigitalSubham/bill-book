@@ -13,17 +13,17 @@ import {
     Text,
     Card,
     HelperText,
-    Menu,
     Divider,
     Chip,
 } from 'react-native-paper';
-
+import AppDropdownPicker from '../../components/common/Dropdown';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { RootStackParamList, FormErrors, CustomerFormData } from '../../types';
+import { RootStackParamList, FormErrors, CustomerBaseType, CustomerType, formTypeEnum } from '../../types';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createCustomers, fetchCustomersById, updateCustomers } from '../../apis/customerApis';
 import { validateForm } from '../../utils/validators';
-import { STATES } from '../../constants/state';
+import { STATE_OPTIONS } from '../../constants/state';
+import MaterialDesignIcons from '@react-native-vector-icons/material-design-icons';
 
 type AddCustomerScreenNavigationProp = NativeStackNavigationProp<
     RootStackParamList>;
@@ -31,7 +31,7 @@ type AddCustomerScreenNavigationProp = NativeStackNavigationProp<
 interface Props {
     navigation: AddCustomerScreenNavigationProp;
     route: {
-        params: { customerId?: string, formType: string };
+        params: { customerId?: string, formType: formTypeEnum };
     }
 
 }
@@ -50,7 +50,7 @@ const AddCustomerScreen = ({ navigation, route }: Props) => {
 
     console.log("existingCustomer", existingCustomer)
 
-    const [formData, setFormData] = useState<CustomerFormData>({
+    const [formData, setFormData] = useState<CustomerBaseType>({
         name: '',
         mobile: '',
         email: '',
@@ -66,12 +66,10 @@ const AddCustomerScreen = ({ navigation, route }: Props) => {
     });
 
     const [errors, setErrors] = useState<FormErrors>({});
-    const [stateMenuVisible, setStateMenuVisible] = useState(false);
-    const [supplyStateMenuVisible, setSupplyStateMenuVisible] = useState(false);
     const [showAdvanced, setShowAdvanced] = useState(false);
     const queryClient = useQueryClient();
     const createProductMutation = useMutation({
-        mutationFn: (newCustomer: CustomerFormData) => createCustomers(newCustomer),
+        mutationFn: (newCustomer: CustomerBaseType) => createCustomers(newCustomer),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['customers'], exact: true });
         }
@@ -79,10 +77,10 @@ const AddCustomerScreen = ({ navigation, route }: Props) => {
     const updateProductMutation = useMutation({
         mutationFn: ({ id, customerData }: {
             id: string;
-            customerData: CustomerFormData;
+            customerData: CustomerType;
         }) => updateCustomers(id, customerData),
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['customers'], exact: true });
+            queryClient.invalidateQueries({ queryKey: ['customers', customerId], exact: true });
         }
     })
 
@@ -116,7 +114,6 @@ const AddCustomerScreen = ({ navigation, route }: Props) => {
 
     const handleSubmit = () => {
         if (!validateForm(formData, setErrors)) {
-            Alert.alert('Validation Error', 'Please fix the errors before submitting');
             return;
         }
 
@@ -194,7 +191,7 @@ const AddCustomerScreen = ({ navigation, route }: Props) => {
         );
     };
 
-    const updateFormData = (field: keyof CustomerFormData, value: string) => {
+    const updateFormData = (field: keyof CustomerType, value: string) => {
         setFormData({ ...formData, [field]: value });
         if (errors[field as keyof FormErrors]) {
             setErrors({ ...errors, [field]: undefined });
@@ -326,37 +323,16 @@ const AddCustomerScreen = ({ navigation, route }: Props) => {
                                 {errors.pincode}
                             </HelperText>
                         )}
+                        <AppDropdownPicker
+                            label="State*"
+                            value={formData.state}
+                            items={STATE_OPTIONS.map((state) => ({ label: state.label, value: state.value }))}
+                            onChange={(value) => updateFormData('state', value)}
+                            // error={errors.state}
+                            zIndex={2000}
+                            searchable={true}
+                        />
 
-                        {/* State Selection */}
-                        <Menu
-                            visible={stateMenuVisible}
-                            onDismiss={() => setStateMenuVisible(false)}
-                            anchor={
-                                <TouchableOpacity onPress={() => setStateMenuVisible(true)}>
-                                    <TextInput
-                                        label="State"
-                                        value={formData.state}
-                                        mode="outlined"
-                                        style={styles.input}
-                                        editable={false}
-                                        right={<TextInput.Icon icon="chevron-down" />}
-                                    />
-                                </TouchableOpacity>
-                            }>
-                            <ScrollView style={styles.menuScroll}>
-                                {STATES.map((state) => (
-                                    <Menu.Item
-                                        key={state}
-                                        onPress={() => {
-                                            updateFormData('state', state);
-                                            setStateMenuVisible(false);
-                                        }}
-                                        title={state}
-                                        leadingIcon={formData.state === state ? 'check' : undefined}
-                                    />
-                                ))}
-                            </ScrollView>
-                        </Menu>
                     </Card.Content>
                 </Card>
 
@@ -388,40 +364,16 @@ const AddCustomerScreen = ({ navigation, route }: Props) => {
                         <HelperText type="info">
                             Leave empty if customer doesn't have gst_number
                         </HelperText>
+                        <AppDropdownPicker
+                            label="Place of Supply *"
+                            value={formData.state}
+                            items={STATE_OPTIONS.map((state) => ({ label: state.label, value: state.value }))}
+                            onChange={(value) => updateFormData('placeOfSupply', value)}
+                            // error={errors.state}
+                            zIndex={2000}
+                            searchable={true}
+                        />
 
-                        {/* Place of Supply */}
-                        <Menu
-                            visible={supplyStateMenuVisible}
-                            onDismiss={() => setSupplyStateMenuVisible(false)}
-                            anchor={
-                                <TouchableOpacity
-                                    onPress={() => setSupplyStateMenuVisible(true)}>
-                                    <TextInput
-                                        label="Place of Supply *"
-                                        value={formData.placeOfSupply}
-                                        mode="outlined"
-                                        style={styles.input}
-                                        editable={false}
-                                        right={<TextInput.Icon icon="chevron-down" />}
-                                    />
-                                </TouchableOpacity>
-                            }>
-                            <ScrollView style={styles.menuScroll}>
-                                {STATES.map((state) => (
-                                    <Menu.Item
-                                        key={state}
-                                        onPress={() => {
-                                            updateFormData('placeOfSupply', state);
-                                            setSupplyStateMenuVisible(false);
-                                        }}
-                                        title={state}
-                                        leadingIcon={
-                                            formData.placeOfSupply === state ? 'check' : undefined
-                                        }
-                                    />
-                                ))}
-                            </ScrollView>
-                        </Menu>
                         <HelperText type="info">
                             Used for GST calculation on invoices
                         </HelperText>
@@ -437,40 +389,41 @@ const AddCustomerScreen = ({ navigation, route }: Props) => {
                             <Text variant="titleMedium" style={styles.sectionTitle}>
                                 Advanced Settings
                             </Text>
-                            <Text variant="bodyMedium" style={styles.advancedToggle}>
-                                {showAdvanced ? '▼' : '►'}
-                            </Text>
+                            <MaterialDesignIcons
+                                name={showAdvanced ? 'chevron-down' : 'chevron-right'}
+                                size={20}
+                                color={'#2196F3'}
+                            />
                         </TouchableOpacity>
 
-                        {showAdvanced && (
-                            <>
-                                <Divider style={styles.divider} />
+                        <View style={{ display: showAdvanced ? 'flex' : 'none' }}>
+                            <Divider style={styles.divider} />
 
-                                <TextInput
-                                    label="Credit Limit"
-                                    value={formData.creditLimit}
-                                    onChangeText={(text) => updateFormData('creditLimit', text)}
-                                    mode="outlined"
-                                    keyboardType="decimal-pad"
-                                    style={styles.input}
-                                    left={<TextInput.Affix text="₹" />}
-                                />
-                                <HelperText type="info">
-                                    Maximum credit amount allowed for this customer
-                                </HelperText>
+                            <TextInput
+                                label="Credit Limit"
+                                value={formData.creditLimit}
+                                onChangeText={(text) => updateFormData('creditLimit', text)}
+                                mode="outlined"
+                                keyboardType="decimal-pad"
+                                style={styles.input}
+                                left={<TextInput.Affix text="₹" />}
+                            />
+                            <HelperText type="info">
+                                Maximum credit amount allowed for this customer
+                            </HelperText>
 
-                                <TextInput
-                                    label="Notes"
-                                    value={formData.notes}
-                                    onChangeText={(text) => updateFormData('notes', text)}
-                                    mode="outlined"
-                                    multiline
-                                    numberOfLines={3}
-                                    style={styles.input}
-                                    placeholder="Special instructions, preferences, etc."
-                                />
-                            </>
-                        )}
+                            <TextInput
+                                label="Notes"
+                                value={formData.notes}
+                                onChangeText={(text) => updateFormData('notes', text)}
+                                mode="outlined"
+                                multiline
+                                numberOfLines={3}
+                                style={styles.input}
+                                placeholder="Special instructions, preferences, etc."
+                            />
+                        </View>
+
                     </Card.Content>
                 </Card>
 
@@ -484,6 +437,8 @@ const AddCustomerScreen = ({ navigation, route }: Props) => {
                     </Button>
                     <Button
                         mode="contained"
+                        disabled={createProductMutation.isPending || updateProductMutation.isPending}
+                        loading={createProductMutation.isPending || updateProductMutation.isPending}
                         onPress={handleSubmit}
                         style={styles.button}
                         icon="content-save">
@@ -520,7 +475,6 @@ const styles = StyleSheet.create({
     },
     sectionTitle: {
         fontWeight: 'bold',
-        marginBottom: 16,
         color: '#333',
     },
     input: {
@@ -555,10 +509,7 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
         alignItems: 'center',
     },
-    advancedToggle: {
-        color: '#2196F3',
-        fontSize: 20,
-    },
+
     divider: {
         marginVertical: 12,
     },

@@ -1,20 +1,21 @@
 import { ScrollView, Alert, View, StyleSheet } from 'react-native';
 import { Button, Divider, DataTable, Card, Text } from 'react-native-paper';
 import { generateInvoicePDF, shareInvoicePDF } from '../../utils/pdfGenerator';
-import { convertAmountToWords, dateFmt } from '../../utils/calculations';
-import { Invoice } from '../../types';
+import { convertAmountToWords } from '../../utils/calculations';
+import { formTypeEnum, InvoiceBase, InvoiceType } from '../../types';
 import { useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { getProfileApi } from '../../apis/authApi';
 import { createInvoices } from '../../apis/InvoiceApis';
 import { QrGenerator } from '../../utils/generateQrBase64';
+import { formatDate } from '../../utils/helper';
 
 interface InvoicePreviewProps {
     navigation: any;
     route: {
         params: {
-            invoice: Invoice;
-            formType: string;
+            invoice: InvoiceBase | InvoiceType;
+            formType: formTypeEnum;
         };
     };
 }
@@ -24,43 +25,36 @@ export const InvoicePreviewScreen: React.FC<InvoicePreviewProps> = ({
     route,
 }) => {
     const { invoice, formType } = route.params;
+    const [isSaved, setIsSaved] = useState(false);
     const { data: business } = useQuery({
         queryKey: ['business'],
         queryFn: getProfileApi,
 
     })
-    console.log("business", business)
     const [qrBase64, setQrBase64] = useState<string | null>(null);
     const [generating, setGenerating] = useState(false);
     const generateInvoice = useMutation({
         mutationFn: (payload: any) => createInvoices(payload),
         onSuccess: (data) => {
-            Alert.alert('Success', 'Invoice saved successfully', [
-                {
-                    text: 'OK',
-                    onPress: () => navigation.navigate('InvoiceList'),
-                },
-            ]);
+            setIsSaved(true);
+            Alert.alert('Success', 'Invoice saved successfully');
         },
         onError: (error) => {
-            Alert.alert('Error', 'Failed to save invoice');
+            Alert.alert('Error', error.message || 'Failed to save invoice');
         },
     })
-
-
     const handleSaveInvoice = () => {
         const payload = {
             customer_id: invoice.customer.id,
             invoice_type: "sale",
             invoice_date: invoice.invoiceDate,
             due_date: invoice.dueDate,
-            status: invoice.status,
-            payment_status: invoice.status === 'paid' ? 'paid' : (invoice.receivedAmount > 0 ? 'partial' : 'unpaid'),
+            payment_status: invoice.status,
             items: invoice.items.map(item => ({
                 product_id: item.productId,
                 product_name: item.productName,
                 quantity: item.quantity,
-                selling_rate: item.rate,
+                selling_rate: item.sellingRate,
                 tax_percent: item.taxRate,
                 tax_amount: item.taxAmount,
                 line_total: item.amount,
@@ -68,21 +62,28 @@ export const InvoicePreviewScreen: React.FC<InvoicePreviewProps> = ({
                 sgst: Number(item.taxAmount) / 2,
                 igst: Number(item.taxAmount)
             })),
-            total_tax: invoice.cgst + invoice.sgst,
-            cgst_total: invoice.cgst,
-            sgst_total: invoice.sgst,
-            igst_total: invoice.cgst + invoice.sgst,
+            total_tax: invoice.cgstTotal + invoice.sgstTotal,
+            cgst_total: invoice.cgstTotal,
+            sgst_total: invoice.sgstTotal,
+            igst_total: invoice.cgstTotal + invoice.sgstTotal,
             total_amount: invoice.totalAmount,
             received_amount: invoice.receivedAmount,
-            pdf_path: "",
             notes: " Thank you for your business! ",
         }
         generateInvoice.mutate(payload);
     };
 
     const handleGeneratePDF = async () => {
+        if (!isSaved && formType !== formTypeEnum.EDIT) {
+            Alert.alert(
+                'Save Required',
+                'Please save the invoice before sharing PDF'
+            );
+            return;
+        }
         try {
             setGenerating(true);
+            console.log("invoice", invoice)
             const filePath = await generateInvoicePDF(invoice, business, qrBase64);
             shareInvoicePDF(filePath)
         } catch (error) {
@@ -130,19 +131,19 @@ export const InvoicePreviewScreen: React.FC<InvoicePreviewProps> = ({
                         <View style={styles.detailRow}>
                             <Text variant="bodyMedium">Invoice No:</Text>
                             <Text variant="bodyMedium" style={[styles.detailValue, styles.highlight]}>
-                                {invoice.invoiceNo || invoice.invoice_number}
+                                {invoice?.invoiceNumber || "NA"}
                             </Text>
                         </View>
                         <View style={styles.detailRow}>
                             <Text variant="bodyMedium">Invoice Date:</Text>
                             <Text variant="bodyMedium" style={styles.detailValue}>
-                                {dateFmt(invoice.invoiceDate || invoice.invoice_date) || "NA"}
+                                {formatDate(invoice.invoiceDate) || "NA"}
                             </Text>
                         </View>
                         <View style={styles.detailRow}>
                             <Text variant="bodyMedium">Due Date:</Text>
                             <Text variant="bodyMedium" style={styles.detailValue}>
-                                {dateFmt(invoice.dueDate || invoice.due_date)}
+                                {formatDate(invoice.dueDate) || "NA"}
                             </Text>
                         </View>
                     </Card.Content>
@@ -157,14 +158,14 @@ export const InvoicePreviewScreen: React.FC<InvoicePreviewProps> = ({
                         <Text variant="bodyLarge">name: {invoice.customer.name}</Text>
                         {!!invoice.customer.address && (
                             <Text variant="bodySmall" style={styles.customerInfo}>
-                                address:  {invoice.customer.address}
+                                address:  {invoice.customer.address || "NA"}
                             </Text>
                         )}
                         <Text variant="bodySmall" style={styles.customerInfo}>
-                            Mobile: {invoice.customer.mobile}
+                            Mobile: {invoice.customer.mobile || "NA"}
                         </Text>
                         <Text variant="bodySmall" style={styles.customerInfo}>
-                            GSTIN: {invoice.customer.gst_number}
+                            GSTIN: {invoice.customer.gst_number || "NA"}
                         </Text>
                     </Card.Content>
                 </Card>
@@ -187,13 +188,13 @@ export const InvoicePreviewScreen: React.FC<InvoicePreviewProps> = ({
                                         <View>
                                             <Text variant="bodyMedium">{item.productName}</Text>
                                             <Text variant="bodySmall" style={styles.itemSubtext}>
-                                                Tax: {item.taxRate}%
+                                                Tax: {item.taxRate || "0.00"}%
                                             </Text>
                                         </View>
                                     </DataTable.Cell>
                                     <DataTable.Cell numeric>{item.quantity}</DataTable.Cell>
-                                    <DataTable.Cell numeric>₹{item.rate || item.selling_rate}</DataTable.Cell>
-                                    <DataTable.Cell numeric>₹{item.taxAmount || item.tax_amount}</DataTable.Cell>
+                                    <DataTable.Cell numeric>₹{item.sellingRate}</DataTable.Cell>
+                                    <DataTable.Cell numeric>₹{item.taxAmount}</DataTable.Cell>
                                     <DataTable.Cell numeric>
                                         ₹{item?.amount}
                                     </DataTable.Cell>
@@ -209,16 +210,16 @@ export const InvoicePreviewScreen: React.FC<InvoicePreviewProps> = ({
                         <View style={styles.totalRow}>
                             <Text variant="bodyMedium">Taxable Amount</Text>
                             <Text variant="bodyMedium">
-                                ₹{invoice.taxableAmount || invoice.total_tax}
+                                ₹{invoice.taxableAmount}
                             </Text>
                         </View>
                         <View style={styles.totalRow}>
                             <Text variant="bodyMedium">CGST</Text>
-                            <Text variant="bodyMedium">₹{invoice.cgst || invoice.cgst_total}</Text>
+                            <Text variant="bodyMedium">₹{invoice.cgstTotal}</Text>
                         </View>
                         <View style={styles.totalRow}>
                             <Text variant="bodyMedium">SGST</Text>
-                            <Text variant="bodyMedium">₹{invoice.sgst || invoice.sgst_total}</Text>
+                            <Text variant="bodyMedium">₹{invoice.sgstTotal}</Text>
                         </View>
                         <Divider style={styles.divider} />
                         <View style={styles.totalRow}>
@@ -226,7 +227,7 @@ export const InvoicePreviewScreen: React.FC<InvoicePreviewProps> = ({
                                 Total Amount
                             </Text>
                             <Text variant="titleLarge" style={styles.totalAmount}>
-                                ₹{invoice.totalAmount || invoice.total_amount}
+                                ₹{invoice.totalAmount}
                             </Text>
                         </View>
                         <View style={styles.totalRow}>
@@ -261,7 +262,7 @@ export const InvoicePreviewScreen: React.FC<InvoicePreviewProps> = ({
 
             {/* Action Buttons */}
             <View style={styles.actionButtons}>
-                {formType !== "edit" && <Button
+                {formType !== formTypeEnum.EDIT && <Button
                     mode="outlined"
                     onPress={() => navigation.goBack()}
                     style={styles.actionButton}>
@@ -271,14 +272,15 @@ export const InvoicePreviewScreen: React.FC<InvoicePreviewProps> = ({
                     mode="contained-tonal"
                     onPress={handleGeneratePDF}
                     loading={generating}
-                    disabled={generating}
+                    disabled={(generating || !isSaved) && formType !== formTypeEnum.EDIT}
                     icon="file-pdf-box"
                     style={styles.actionButton}>
-                    PDF
+                    {formType === formTypeEnum.EDIT ? "Share PDF" : isSaved ? "Share PDF" : "Save to Enable PDF"}
                 </Button>
-                {formType !== "edit" && <Button
+                {(formType !== formTypeEnum.EDIT || isSaved) && <Button
                     mode="contained"
                     onPress={handleSaveInvoice}
+                    disabled={isSaved || generateInvoice.isPending}
                     icon="check"
                     style={styles.actionButton}>
                     Save

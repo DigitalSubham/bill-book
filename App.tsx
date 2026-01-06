@@ -6,6 +6,7 @@ import { MD3LightTheme, PaperProvider } from 'react-native-paper';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { store } from './src/redux/store';
 import AppNavigator from './src/navigation/AppNavigator';
+import Toast from 'react-native-toast-message';
 
 LogBox.ignoreAllLogs();
 
@@ -27,6 +28,7 @@ const App = () => {
           <PaperProvider theme={MD3LightTheme}>
             <StatusBar barStyle="dark-content" />
             <AppNavigator />
+            <Toast />
           </PaperProvider>
         </QueryClientProvider>
       </ReduxProvider>

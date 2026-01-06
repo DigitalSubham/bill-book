@@ -3,6 +3,7 @@ import Share from 'react-native-share';
 import { Platform } from 'react-native';
 import { htmlTemplate } from './htmlTemplate';
 import { convertAmountToWords } from './calculations';
+import { formatDate } from './helper';
 
 export const generateInvoicePDF = async (
   invoice: any,
@@ -16,42 +17,49 @@ export const generateInvoicePDF = async (
     email: business.email,
     gst_number: business.gst_number,
     pan: business.pan_number,
-
     bankName: business.bank,
     ifsc: business.ifsc,
     accountNumber: business.account_no,
-
     upiId: business.upi_id,
     qrCode: qrcode,
   };
 
   const inv = {
-    invoiceNo: invoice.invoice_number,
-    invoiceDate: invoice.invoice_date,
-    dueDate: invoice.due_date,
+    invoiceNumber: invoice.invoiceNumber,
+    invoiceDate: formatDate(invoice.invoiceDate),
+    dueDate: formatDate(invoice.dueDate),
 
     customerName: invoice.customer.name,
     customerAddress: invoice.customer.address,
     customerGST: invoice.customer.gst_number,
     customerMobile: invoice.customer.mobile,
     placeOfSupply: invoice.customer.address,
+
     items: invoice.items,
-    taxableAmount: invoice.total_amount - invoice.total_tax,
-    cgst: invoice.cgst || invoice.cgst_total,
-    sgst: invoice.sgst || invoice.sgst_total,
-    totalTax: invoice.total_tax || invoice.totalAmount - invoice.taxableAmount,
-    totalAmount: invoice.totalAmount || invoice.total_amount,
+
+    taxableAmount:
+      invoice.taxableAmount ||
+      Number(invoice.totalAmount) - Number(invoice.totalTax),
+    cgstTotal: invoice.cgstTotal,
+    sgstTotal: invoice.sgstTotal,
+    totalTax:
+      Number(invoice.totalAmount) -
+      Number(
+        invoice.taxableAmount ||
+          Number(invoice.totalAmount) - Number(invoice.totalTax),
+      ),
+    totalAmount: invoice.totalAmount,
     receivedAmount: invoice.receivedAmount,
 
-    totalAmountWords: convertAmountToWords(invoice.total_amount),
+    totalAmountWords: convertAmountToWords(invoice.totalAmount),
   };
 
-  console.log('inv', invoice);
+  console.log('inv', invoice, inv);
 
   try {
     const file = await RNHTMLtoPDF.generatePDF({
       html: htmlTemplate(inv, busi),
-      fileName: `Invoice_${invoice.invoiceNo || 1}`,
+      fileName: `Invoice_${invoice.invoiceNumber || 1}`,
       base64: true,
     });
     return file.filePath;

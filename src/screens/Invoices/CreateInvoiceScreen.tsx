@@ -24,7 +24,7 @@ import {
   calculateInvoiceTotals,
 } from '../../utils/calculations';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { CustomerFormData, DatePickerType, Invoice, InvoiceItem, Product, RootStackParamList } from '../../types';
+import { CustomerType, DatePickerType, formTypeEnum, InvoiceBase, InvoiceItem, ProductType, RootStackParamList } from '../../types';
 import { useQuery } from '@tanstack/react-query';
 import { fetchProducts } from '../../apis/productApis';
 import { fetchCustomer } from '../../apis/customerApis';
@@ -38,7 +38,7 @@ interface Props {
 }
 
 const CreateInvoiceScreen: React.FC<Props> = ({ navigation }) => {
-  const [customer, setCustomer] = useState<CustomerFormData | null>(null);
+  const [customer, setCustomer] = useState<CustomerType | null>(null);
   const [invoiceDate, setInvoiceDate] = useState<Date>(new Date());
   const [dueDate, setDueDate] = useState<Date>(
     new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
@@ -54,36 +54,36 @@ const CreateInvoiceScreen: React.FC<Props> = ({ navigation }) => {
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [receivedAmount, setReceivedAmount] = useState<string>('0');
 
-  const { data: customers = [] } = useQuery<CustomerFormData[]>({
+  const { data: customers = [] } = useQuery<CustomerType[]>({
     queryKey: ['customers'],
     queryFn: fetchCustomer,
     staleTime: 5 * 60 * 1000,
   });
 
-  const { data: products = [] } = useQuery<Product[]>({
+  const { data: products = [] } = useQuery<ProductType[]>({
     queryKey: ['products'],
     queryFn: fetchProducts,
     staleTime: 5 * 60 * 1000,
   });
 
   const filteredCustomers = customers.filter(
-    (c: CustomerFormData) =>
+    (c: CustomerType) =>
       c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       c.mobile.includes(searchQuery),
   );
 
-  const filteredProducts = products.filter((p: Product) =>
+  const filteredProducts = products.filter((p: ProductType) =>
     p.name.toLowerCase().includes(searchQuery.toLowerCase()),
   );
 
 
-  const selectCustomer = (selectedCustomer: CustomerFormData) => {
-    setCustomer(selectedCustomer);
+  const selectCustomer = (selectedCustomer: CustomerType) => {
+    setCustomer(selectedCustomer)
     setShowCustomerModal(false);
     setSearchQuery('');
   };
 
-  const addProduct = (product: Product) => {
+  const addProduct = (product: ProductType) => {
     const existingItem = items.find(item => item.productId === product.id);
 
     if (existingItem) {
@@ -91,11 +91,11 @@ const CreateInvoiceScreen: React.FC<Props> = ({ navigation }) => {
     } else {
       const calc = calculateItemAmount(1, product.rate, product.taxRate);
       const newItem = {
-        productId: product.id,
+        productId: product?.id,
         productName: product.name,
         quantity: 1,
         mrp: product.mrp,
-        rate: product.rate,
+        sellingRate: product.rate,
         taxRate: product.taxRate,
         taxAmount: calc.taxAmount,
         amount: calc.totalAmount,
@@ -117,7 +117,7 @@ const CreateInvoiceScreen: React.FC<Props> = ({ navigation }) => {
         if (item.productId === productId) {
           const calc = calculateItemAmount(
             newQuantity,
-            item.rate,
+            item.sellingRate,
             item.taxRate,
           );
           return {
@@ -136,9 +136,9 @@ const CreateInvoiceScreen: React.FC<Props> = ({ navigation }) => {
     setItems(items.filter(item => item.productId !== productId));
   };
 
-  const totals = calculateInvoiceTotals(items);
 
-  const handleSaveInvoice = () => {
+  const totals = calculateInvoiceTotals(items);
+  const handlePreviewInvoice = () => {
     if (!customer) {
       Alert.alert('Error', 'Please select a customer');
       return;
@@ -149,7 +149,7 @@ const CreateInvoiceScreen: React.FC<Props> = ({ navigation }) => {
       return;
     }
 
-    const invoice: Invoice = {
+    const invoice: InvoiceBase = {
       customer,
       invoiceDate,
       dueDate,
@@ -163,9 +163,7 @@ const CreateInvoiceScreen: React.FC<Props> = ({ navigation }) => {
             ? 'partial'
             : 'pending',
     };
-
-
-    navigation.navigate('InvoicePreview', { invoice, formType: "create" });
+    navigation.navigate('InvoicePreview', { invoice, formType: formTypeEnum.ADD });
   };
 
   return (
@@ -259,7 +257,7 @@ const CreateInvoiceScreen: React.FC<Props> = ({ navigation }) => {
                   <View style={styles.itemInfo}>
                     <Text variant="bodyLarge">{item.productName}</Text>
                     <Text variant="bodySmall" style={styles.itemDetails}>
-                      Rate: ₹{item.rate} | Tax: {item.taxRate}%
+                      Rate: ₹{item.sellingRate} | Tax: {item.taxRate}%
                     </Text>
                   </View>
                   <View style={styles.itemActions}>
@@ -313,11 +311,11 @@ const CreateInvoiceScreen: React.FC<Props> = ({ navigation }) => {
               </View>
               <View style={styles.totalRow}>
                 <Text variant="bodyMedium">CGST</Text>
-                <Text variant="bodyMedium">₹{totals.cgst?.toFixed(2)}</Text>
+                <Text variant="bodyMedium">₹{totals.cgstTotal?.toFixed(2)}</Text>
               </View>
               <View style={styles.totalRow}>
                 <Text variant="bodyMedium">SGST</Text>
-                <Text variant="bodyMedium">₹{totals.sgst?.toFixed(2)}</Text>
+                <Text variant="bodyMedium">₹{totals.sgstTotal?.toFixed(2)}</Text>
               </View>
               <Divider style={styles.divider} />
               <View style={styles.totalRow}>
@@ -347,7 +345,7 @@ const CreateInvoiceScreen: React.FC<Props> = ({ navigation }) => {
       <View style={styles.footer}>
         <Button
           mode="contained"
-          onPress={handleSaveInvoice}
+          onPress={handlePreviewInvoice}
           disabled={!customer || items.length === 0}
           style={styles.saveButton}
         >

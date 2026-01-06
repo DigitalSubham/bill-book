@@ -1,7 +1,7 @@
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { RootStackParamList } from "../types";
-import BusinessSettingsScreen from "../screens/Settings/BusinessSettingsScreen";
 import DashboardScreen from "../screens/Dashboard";
+import SettingsStack from "./SettingsNavigator";
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 const DashboardStack = () => {
@@ -17,9 +17,9 @@ const DashboardStack = () => {
         options={{ title: 'Dashboard' }}
       />
       <Stack.Screen
-        name="BusinessSettings"
-        component={BusinessSettingsScreen}
-        options={{ title: 'Business Settings' }}
+        name="Settings"
+        component={SettingsStack}
+        options={{ title: 'Settings' }}
       />
     </Stack.Navigator>
   );

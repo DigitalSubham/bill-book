@@ -1,13 +1,12 @@
 import type React from "react"
-import { useEffect, useState } from "react"
-import { View, StyleSheet, ScrollView, Dimensions, RefreshControl } from "react-native"
-import { Card, Text, FAB as Fab, Chip, Avatar, IconButton, Divider } from "react-native-paper"
-import { useSelector } from "react-redux"
-import { LineChart } from "react-native-chart-kit"
+import { useState } from "react"
+import { View, StyleSheet, ScrollView, RefreshControl } from "react-native"
+import { Card, Text, FAB as Fab, Avatar, IconButton } from "react-native-paper"
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack"
-import type { RootStackParamList, DashboardStats, Invoice } from "../../types"
+import type { RootStackParamList, DashboardStats } from "../../types"
 import { useQuery } from "@tanstack/react-query"
 import { getProfileApi } from "../../apis/authApi"
+import { dashboardStats } from "../../apis/dashboardApi"
 
 type DashboardScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, "Dashboard">
 
@@ -16,8 +15,7 @@ interface Props {
 }
 
 const DashboardScreen: React.FC<Props> = ({ navigation }) => {
-    const [refreshing, setRefreshing] = useState(false)
-    const [stats, setStats] = useState<DashboardStats>({
+    const [stats] = useState<DashboardStats>({
         totalSales: 0,
         totalInvoices: 0,
         pendingAmount: 0,
@@ -26,96 +24,21 @@ const DashboardScreen: React.FC<Props> = ({ navigation }) => {
         monthSales: 0,
     })
 
-    const invoices = useSelector((state: any) => state.invoices.list) as Invoice[]
-    const products = useSelector((state: any) => state.products.list)
     const { data: business } = useQuery({
         queryKey: ['business'],
         queryFn: getProfileApi,
     })
-
-
-    useEffect(() => {
-        calculateStats()
-    }, [invoices, products])
-
-    const calculateStats = () => {
-        const today = new Date()
-        today.setHours(0, 0, 0, 0)
-
-        const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1)
-
-        const totalSales = invoices.reduce((sum, inv) => sum + inv.totalAmount, 0)
-        const totalInvoices = invoices.length
-        const pendingAmount = invoices
-            .filter((inv) => inv.status === "pending" || inv.status === "partial")
-            .reduce((sum, inv) => sum + (inv.totalAmount - inv.receivedAmount), 0)
-
-        const lowStockItems = products.filter((p: any) => p.minStock && p.stock <= p.minStock).length
-
-        const todaySales = invoices
-            .filter((inv) => new Date(inv.invoiceDate) >= today)
-            .reduce((sum, inv) => sum + inv.totalAmount, 0)
-
-        const monthSales = invoices
-            .filter((inv) => new Date(inv.invoiceDate) >= startOfMonth)
-            .reduce((sum, inv) => sum + inv.totalAmount, 0)
-
-        setStats({
-            totalSales,
-            totalInvoices,
-            pendingAmount,
-            lowStockItems,
-            todaySales,
-            monthSales,
-        })
-    }
-
-    const onRefresh = async () => {
-        setRefreshing(true)
-        calculateStats()
-        setTimeout(() => setRefreshing(false), 1000)
-    }
-
-    const sortedInvoices = [...invoices].sort((a, b) => {
-        const aTime = a.createdAt ? new Date(a.createdAt).getTime() : 0
-        const bTime = b.createdAt ? new Date(b.createdAt).getTime() : 0
-        return bTime - aTime
+    const { data: dashboardData, isFetching, refetch } = useQuery({
+        queryKey: ['dashboardStats'],
+        queryFn: dashboardStats,
     })
 
-    const recentInvoices = sortedInvoices.slice(0, 5)
+    console.log("dashboardData", dashboardData)
 
-
-    const last7Days = Array.from({ length: 7 }, (_, i) => {
-        const date = new Date()
-        date.setDate(date.getDate() - (6 - i))
-        return date
-    })
-
-    const chartData = last7Days.map((date) => {
-        const dayStart = new Date(date)
-        dayStart.setHours(0, 0, 0, 0)
-        const dayEnd = new Date(date)
-        dayEnd.setHours(23, 59, 59, 999)
-
-        const daySales = invoices
-            .filter((inv) => {
-                const invDate = new Date(inv.invoiceDate)
-                return invDate >= dayStart && invDate <= dayEnd
-            })
-            .reduce((sum, inv) => sum + inv.totalAmount, 0)
-
-        return daySales
-    })
-
-    const chartLabels = last7Days.map((date) => {
-        const day = date.getDate().toString().padStart(2, "0")
-        const month = (date.getMonth() + 1).toString().padStart(2, "0")
-        return `${day}/${month}`
-    })
 
     return (
         <View style={styles.container}>
-            <ScrollView refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}>
+            <ScrollView refreshControl={<RefreshControl refreshing={isFetching} onRefresh={refetch} />}>
                 <View style={styles.gradientHeader}>
                     <View style={styles.headerContent}>
                         <View>
@@ -135,7 +58,7 @@ const DashboardScreen: React.FC<Props> = ({ navigation }) => {
                             size={26}
                             iconColor="#fff"
                             style={styles.settingsBtn}
-                            onPress={() => navigation.navigate("BusinessSettings")}
+                            onPress={() => navigation.navigate("Settings")}
                         />
                     </View>
                 </View>
@@ -158,7 +81,7 @@ const DashboardScreen: React.FC<Props> = ({ navigation }) => {
                                 <Text style={styles.primaryStatLabel}>Invoices</Text>
                                 <Avatar.Icon size={40} icon="file-document" style={styles.primaryIconOverlay} />
                             </View>
-                            <Text style={styles.primaryStatValue}>{stats.totalInvoices}</Text>
+                            <Text style={styles.primaryStatValue}>{dashboardData?.totalInvoices || 0}</Text>
                             <Text style={styles.primaryStatSubtext}>Total created</Text>
                         </Card.Content>
                     </Card>
@@ -196,47 +119,14 @@ const DashboardScreen: React.FC<Props> = ({ navigation }) => {
                     </Card>
                 </View>
 
-                <Card style={styles.chartCard}>
-                    <Card.Content style={styles.chartContent}>
-                        <View style={styles.chartHeader}>
-                            <View>
-                                <Text style={styles.chartTitle}>Sales Trend</Text>
-                                <Text style={styles.chartSubtitle}>Last 7 days performance</Text>
-                            </View>
-                        </View>
-                        <LineChart
-                            data={{
-                                labels: chartLabels,
-                                datasets: [
-                                    {
-                                        data: chartData.length > 0 ? chartData : [0],
-                                    },
-                                ],
-                            }}
-                            width={Dimensions.get("window").width - 48}
-                            height={200}
-                            chartConfig={{
-                                backgroundColor: "transparent",
-                                backgroundGradientFrom: "#f8f9fa",
-                                backgroundGradientTo: "#f8f9fa",
-                                decimalPlaces: 0,
-                                color: (opacity = 1) => `rgba(0, 102, 204, ${opacity})`,
-                                labelColor: (opacity = 1) => `rgba(100, 100, 100, ${opacity})`,
-                                style: {
-                                    borderRadius: 12,
-                                },
-                                propsForDots: {
-                                    r: "5",
-                                    strokeWidth: "2",
-                                    stroke: "#0066CC",
-                                },
-                            }}
-                            bezier
-                            style={styles.chart}
-                        />
-                    </Card.Content>
-                </Card>
-
+                <View style={styles.monthStatsContainer}>
+                    <Card style={styles.monthCard}>
+                        <Card.Content>
+                            <Text style={styles.monthLabel}>This Week</Text>
+                            <Text style={styles.monthValue}>₹{(stats.monthSales / 100000)?.toFixed(2)}L</Text>
+                        </Card.Content>
+                    </Card>
+                </View>
                 <View style={styles.monthStatsContainer}>
                     <Card style={styles.monthCard}>
                         <Card.Content>
@@ -249,47 +139,11 @@ const DashboardScreen: React.FC<Props> = ({ navigation }) => {
                 <Card style={styles.recentCard}>
                     <Card.Content style={styles.recentCardContent}>
                         <View style={styles.recentHeader}>
-                            <Text style={styles.recentTitle}>Recent Invoices</Text>
+                            <Text style={styles.recentTitle}>Recent Invoices ({dashboardData?.totalUnpaidInvoices || 0})</Text>
                             <IconButton icon="arrow-right" size={20} onPress={() => navigation.getParent()?.navigate("InvoicesTab")} />
                         </View>
 
-                        {recentInvoices.length > 0 ? (
-                            recentInvoices.map((invoice, index) => (
-                                <View key={invoice.id}>
-                                    <View
-                                        style={styles.invoiceItemModern}
-                                        onTouchEnd={() =>
-                                            navigation.getParent()?.navigate("InvoicesTab")
-                                        }
-                                    >
-                                        <View style={styles.invoiceLeftModern}>
-                                            <View style={styles.invoiceNumberBadge}>
-                                                <Text style={styles.invoiceNumberText}>#{invoice.invoiceNo}</Text>
-                                            </View>
-                                            <View style={styles.invoiceDetailsModern}>
-                                                <Text style={styles.invoiceCustomerModern}>{invoice.customer.name}</Text>
-                                                <Text style={styles.invoiceDateModern}>
-                                                    {new Date(invoice.invoiceDate).toLocaleDateString()}
-                                                </Text>
-                                            </View>
-                                        </View>
-                                        <View style={styles.invoiceRightModern}>
-                                            <Text style={styles.invoiceAmountModern}>₹{invoice.totalAmount?.toFixed(0)}</Text>
-                                            <Chip
-                                                mode="flat"
-                                                style={[styles.statusChipModern, { backgroundColor: getStatusColor(invoice.status) }]}
-                                                textStyle={styles.chipTextModern}
-                                            >
-                                                {invoice.status.toUpperCase()}
-                                            </Chip>
-                                        </View>
-                                    </View>
-                                    {index < recentInvoices.length - 1 && <Divider style={styles.dividerModern} />}
-                                </View>
-                            ))
-                        ) : (
-                            <Text style={styles.emptyText}>No invoices yet</Text>
-                        )}
+
                     </Card.Content>
                 </Card>
 
@@ -304,7 +158,7 @@ const DashboardScreen: React.FC<Props> = ({ navigation }) => {
                             <View style={styles.actionIconBg}>
                                 <Text style={styles.actionEmoji}>📝</Text>
                             </View>
-                            <Text style={styles.actionLabelModern}>New Invoice</Text>
+                            <Text style={styles.actionLabelModern}>Invoice ({dashboardData?.totalInvoices || 0}) </Text>
                         </Card.Content>
                     </Card>
 
@@ -316,7 +170,7 @@ const DashboardScreen: React.FC<Props> = ({ navigation }) => {
                             <View style={styles.actionIconBg}>
                                 <Text style={styles.actionEmoji}>📦</Text>
                             </View>
-                            <Text style={styles.actionLabelModern}>Products</Text>
+                            <Text style={styles.actionLabelModern}>Products ({dashboardData?.totalProducts || 0})</Text>
                         </Card.Content>
                     </Card>
 
@@ -329,7 +183,7 @@ const DashboardScreen: React.FC<Props> = ({ navigation }) => {
                             <View style={styles.actionIconBg}>
                                 <Text style={styles.actionEmoji}>👥</Text>
                             </View>
-                            <Text style={styles.actionLabelModern}>Customers</Text>
+                            <Text style={styles.actionLabelModern}>Customers ({dashboardData?.totalCustomers || 0})</Text>
                         </Card.Content>
                     </Card>
                 </View>

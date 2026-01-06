@@ -1,7 +1,7 @@
-import { CustomerFormData, FormErrors } from '../types';
+import { CustomerBaseType, FormErrors } from '../types';
 
 export const validateForm = (
-  formData: CustomerFormData,
+  formData: CustomerBaseType,
   setErrors: any,
 ): boolean => {
   const newErrors: FormErrors = {};

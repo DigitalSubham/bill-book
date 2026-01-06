@@ -14,10 +14,11 @@ import {
     Avatar,
 } from "react-native-paper";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
-import { RootStackParamList, Product } from "../../types";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { RootStackParamList, ProductType, formTypeEnum } from "../../types";
+import { useQuery } from "@tanstack/react-query";
 import { fetchProducts } from "../../apis/productApis";
 import ProductCard from "../../components/products/ProductCard";
+import Loader from "../../components/common/Loader";
 
 
 export type ProductListScreenNavigationProp = NativeStackNavigationProp<
@@ -33,8 +34,7 @@ const ProductListScreen: React.FC<Props> = ({ navigation }) => {
     const [searchQuery, setSearchQuery] = useState("");
     const [sortBy, setSortBy] = useState<"name" | "stock" | "price">("name");
     const [menuVisible, setMenuVisible] = useState(false);
-    const queryClient = useQueryClient();
-    // ✅ Fetch products with React Query
+
     const { data: products = [], isLoading, refetch, isFetching } = useQuery({
         queryKey: ["products"],
         queryFn: fetchProducts,
@@ -43,9 +43,7 @@ const ProductListScreen: React.FC<Props> = ({ navigation }) => {
 
     if (isLoading) {
         return (
-            <View style={styles.loadingContainer}>
-                <Text variant="titleMedium">Loading products...</Text>
-            </View>
+            <Loader />
         );
     }
 
@@ -54,11 +52,11 @@ const ProductListScreen: React.FC<Props> = ({ navigation }) => {
     // 🔍 Search + Sorting Logic
     const filteredProducts = products
         .filter(
-            (product: Product) =>
+            (product: ProductType) =>
                 product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
                 product.description?.toLowerCase().includes(searchQuery.toLowerCase())
         )
-        .sort((a: Product, b: Product) => {
+        .sort((a: ProductType, b: ProductType) => {
             switch (sortBy) {
                 case "name":
                     return a.name.localeCompare(b.name);
@@ -146,7 +144,7 @@ const ProductListScreen: React.FC<Props> = ({ navigation }) => {
             <Fab
                 icon="plus"
                 style={styles.fab}
-                onPress={() => navigation.navigate("ProductForm", { formType: "add" })}
+                onPress={() => navigation.navigate("ProductForm", { formType: formTypeEnum.ADD })}
                 label="Add Product"
             />
         </View>
@@ -200,7 +198,7 @@ const styles = StyleSheet.create({
         right: 0,
         bottom: 0,
     },
-    loadingContainer: { flex: 1, justifyContent: "center", alignItems: "center" },
+
 
 });
 

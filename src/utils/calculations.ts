@@ -1,22 +1,24 @@
-export const calculateItemAmount = (quantity, rate, taxRate) => {
+import { InvoiceItem } from '../types';
+
+export const calculateItemAmount = (quantity: any, rate: any, taxRate: any) => {
   const baseAmount = quantity * rate;
   const taxAmount = (baseAmount * taxRate) / 100;
   const totalAmount = baseAmount + taxAmount;
 
   return {
-    baseAmount: parseFloat(baseAmount?.toFixed(2)),
-    taxAmount: parseFloat(taxAmount?.toFixed(2)),
-    totalAmount: parseFloat(totalAmount?.toFixed(2)),
+    baseAmount: Number.parseFloat(baseAmount?.toFixed(2)),
+    taxAmount: Number.parseFloat(taxAmount?.toFixed(2)),
+    totalAmount: Number.parseFloat(totalAmount?.toFixed(2)),
   };
 };
 
-export const calculateInvoiceTotals = items => {
+export const calculateInvoiceTotals = (items: InvoiceItem[]) => {
   let subtotal = 0;
   let totalTax = 0;
 
-  items.forEach(item => {
-    subtotal += item.quantity * item.rate;
-    totalTax += item.taxAmount;
+  items.forEach((item: InvoiceItem) => {
+    subtotal += Number(item.quantity) * Number(item.sellingRate);
+    totalTax += Number(item.taxAmount);
   });
 
   const taxableAmount = subtotal;
@@ -25,19 +27,16 @@ export const calculateInvoiceTotals = items => {
   const totalAmount = subtotal + totalTax;
 
   return {
-    subtotal: parseFloat(subtotal?.toFixed(2)),
-    taxableAmount: parseFloat(taxableAmount?.toFixed(2)),
-    cgst: parseFloat(cgst?.toFixed(2)),
-    sgst: parseFloat(sgst?.toFixed(2)),
-    totalAmount: parseFloat(totalAmount?.toFixed(2)),
+    subtotal: Number.parseFloat(subtotal?.toFixed(2)),
+    taxableAmount: Number.parseFloat(taxableAmount?.toFixed(2)),
+    cgstTotal: Number.parseFloat(cgst?.toFixed(2)),
+    sgstTotal: Number.parseFloat(sgst?.toFixed(2)),
+    totalAmount: Number.parseFloat(totalAmount?.toFixed(2)),
   };
 };
 
-export const dateFmt = (d: any) =>
-  d ? new Date(d).toLocaleDateString('en-GB') : '';
-
 export const convertAmountToWords = (amount: number) => {
-  if (amount == null || isNaN(amount)) return '';
+  if (amount == null || Number.isNaN(amount)) return '';
 
   const ones = [
     '',
@@ -105,12 +104,12 @@ export const convertAmountToWords = (amount: number) => {
   };
 
   const [rupees, paise] = Number(amount)?.toFixed(2).split('.');
-  let result = convertToWords(parseInt(rupees))?.trim();
+  let result = convertToWords(Number.parseInt(rupees))?.trim();
   if (!result) result = 'Zero';
   result += ' Rupees';
 
-  if (parseInt(paise) > 0) {
-    result += ' and ' + convertToWords(parseInt(paise)) + ' Paise';
+  if (Number.parseInt(paise) > 0) {
+    result += ' and ' + convertToWords(Number.parseInt(paise)) + ' Paise';
   }
 
   return result.trim();
