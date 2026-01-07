@@ -111,7 +111,6 @@ const AddProductScreen: React.FC<Props> = ({ navigation, route }) => {
         onSuccess: () => {
             queryClient.invalidateQueries({
                 queryKey: ["products"],
-                exact: true,  // optional, ensures exact match
             });
 
         },

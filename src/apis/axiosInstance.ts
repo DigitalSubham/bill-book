@@ -18,4 +18,19 @@ instance.interceptors.request.use(async config => {
   return config;
 });
 
+instance.interceptors.response.use(
+  response => response,
+  error => {
+    return Promise.reject({
+      message:
+        error?.response?.data?.message ||
+        error?.response?.data ||
+        error?.message ||
+        'Something went wrong',
+      status: error?.response?.status,
+      raw: error,
+    });
+  },
+);
+
 export default instance;

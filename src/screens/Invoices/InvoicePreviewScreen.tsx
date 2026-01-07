@@ -4,7 +4,7 @@ import { generateInvoicePDF, shareInvoicePDF } from '../../utils/pdfGenerator';
 import { convertAmountToWords } from '../../utils/calculations';
 import { formTypeEnum, InvoiceBase, InvoiceType } from '../../types';
 import { useState } from 'react';
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { getProfileApi } from '../../apis/authApi';
 import { createInvoices } from '../../apis/InvoiceApis';
 import { QrGenerator } from '../../utils/generateQrBase64';
@@ -33,13 +33,20 @@ export const InvoicePreviewScreen: React.FC<InvoicePreviewProps> = ({
     })
     const [qrBase64, setQrBase64] = useState<string | null>(null);
     const [generating, setGenerating] = useState(false);
+    const queryClient = useQueryClient();
     const generateInvoice = useMutation({
         mutationFn: (payload: any) => createInvoices(payload),
         onSuccess: (data) => {
+            console.log("data", data)
+            if (data.data.invoice_number) {
+                invoice.invoiceNumber = data.data.invoice_number;
+            }
             setIsSaved(true);
+            queryClient.invalidateQueries({ queryKey: ['invoices'] });
             Alert.alert('Success', 'Invoice saved successfully');
         },
         onError: (error) => {
+            console.log("error", error)
             Alert.alert('Error', error.message || 'Failed to save invoice');
         },
     })
@@ -262,12 +269,16 @@ export const InvoicePreviewScreen: React.FC<InvoicePreviewProps> = ({
 
             {/* Action Buttons */}
             <View style={styles.actionButtons}>
-                {formType !== formTypeEnum.EDIT && <Button
-                    mode="outlined"
-                    onPress={() => navigation.goBack()}
-                    style={styles.actionButton}>
-                    Edit
-                </Button>}
+                {!isSaved && formType !== formTypeEnum.EDIT && (
+                    <Button
+                        mode="outlined"
+                        onPress={() => navigation.goBack()}
+                        style={styles.actionButton}
+                    >
+                        Edit
+                    </Button>
+                )}
+
                 <Button
                     mode="contained-tonal"
                     onPress={handleGeneratePDF}
@@ -281,6 +292,7 @@ export const InvoicePreviewScreen: React.FC<InvoicePreviewProps> = ({
                     mode="contained"
                     onPress={handleSaveInvoice}
                     disabled={isSaved || generateInvoice.isPending}
+                    loading={generateInvoice.isPending}
                     icon="check"
                     style={styles.actionButton}>
                     Save

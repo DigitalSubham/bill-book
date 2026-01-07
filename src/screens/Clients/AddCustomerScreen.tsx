@@ -71,7 +71,7 @@ const AddCustomerScreen = ({ navigation, route }: Props) => {
     const createProductMutation = useMutation({
         mutationFn: (newCustomer: CustomerBaseType) => createCustomers(newCustomer),
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['customers'], exact: true });
+            queryClient.invalidateQueries({ queryKey: ['customers'] });
         }
     })
     const updateProductMutation = useMutation({
@@ -80,7 +80,7 @@ const AddCustomerScreen = ({ navigation, route }: Props) => {
             customerData: CustomerType;
         }) => updateCustomers(id, customerData),
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['customers', customerId], exact: true });
+            queryClient.invalidateQueries({ queryKey: ['customers'] });
         }
     })
 
