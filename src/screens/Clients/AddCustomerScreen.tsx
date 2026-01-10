@@ -72,7 +72,11 @@ const AddCustomerScreen = ({ navigation, route }: Props) => {
         mutationFn: (newCustomer: CustomerBaseType) => createCustomers(newCustomer),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['customers'] });
-        }
+        },
+        onError: (error) => {
+            console.log("error", error)
+            Alert.alert('Error', error.message || 'Failed to save invoice');
+        },
     })
     const updateProductMutation = useMutation({
         mutationFn: ({ id, customerData }: {
@@ -81,7 +85,11 @@ const AddCustomerScreen = ({ navigation, route }: Props) => {
         }) => updateCustomers(id, customerData),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['customers'] });
-        }
+        },
+        onError: (error) => {
+            console.log("error", error)
+            Alert.alert('Error', error.message || 'Failed to save invoice');
+        },
     })
 
 
