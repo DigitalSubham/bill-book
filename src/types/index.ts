@@ -38,6 +38,7 @@ export interface CustomerBaseType {
   state: string;
   pincode: string;
   gst_number: string;
+  gstNumber?: string;
   placeOfSupply: string;
   customerType: string;
   creditLimit: string;

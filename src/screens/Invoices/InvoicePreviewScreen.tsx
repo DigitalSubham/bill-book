@@ -172,7 +172,7 @@ export const InvoicePreviewScreen: React.FC<InvoicePreviewProps> = ({
                             Mobile: {invoice.customer.mobile || "NA"}
                         </Text>
                         <Text variant="bodySmall" style={styles.customerInfo}>
-                            GSTIN: {invoice.customer.gst_number || "NA"}
+                            GSTIN: {invoice.customer.gst_number || invoice.customer.gstNumber || "NA"}
                         </Text>
                     </Card.Content>
                 </Card>

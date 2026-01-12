@@ -180,6 +180,9 @@ const CreateInvoiceScreen: React.FC<Props> = ({ navigation }) => {
                 <View style={styles.customerDetails}>
                   <Text variant="bodyLarge">{customer.name}</Text>
                   <Text variant="bodySmall">{customer.mobile}</Text>
+                  {!!customer.gst_number &&
+                    <Text variant="bodySmall">{customer.gst_number}</Text>
+                  }
                   {!!customer.address && (
                     <Text variant="bodySmall">{customer.address}</Text>
                   )}
@@ -374,7 +377,8 @@ const CreateInvoiceScreen: React.FC<Props> = ({ navigation }) => {
               <List.Item
                 key={c.id}
                 title={c.name}
-                description={c.mobile}
+                description={`${c.mobile} - ${c.gst_number || 'N/A'}`}
+
                 onPress={() => selectCustomer(c)}
               />
             ))}
