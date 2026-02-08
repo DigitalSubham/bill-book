@@ -113,7 +113,6 @@ const RegisterScreen: React.FC<Props> = ({ navigation }) => {
                         navigation.navigate('Login');
                     },
                     onError: (error: any) => {
-                        console.log("error", error.response)
                         Alert.alert('Registration Failed', error.response?.data?.message || error.message);
                     },
                 });

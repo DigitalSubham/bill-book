@@ -37,7 +37,6 @@ const BusinessSettingsScreen: React.FC<Props> = ({ navigation }) => {
 
         },
         onError: (err) => {
-            console.log("err", err)
             Alert.alert('Error', 'Failed to update business settings');
         },
 

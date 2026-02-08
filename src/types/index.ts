@@ -94,6 +94,7 @@ export interface InvoiceItem {
 }
 
 export interface InvoiceBase {
+  totalTax?: number;
   invoiceNumber?: number;
   customer: CustomerType;
   items: InvoiceItem[];

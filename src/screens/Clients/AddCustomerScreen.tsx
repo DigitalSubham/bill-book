@@ -48,8 +48,6 @@ const AddCustomerScreen = ({ navigation, route }: Props) => {
         enabled: isEditMode && !!customerId,
     })
 
-    console.log("existingCustomer", existingCustomer)
-
     const [formData, setFormData] = useState<CustomerBaseType>({
         name: '',
         mobile: '',
@@ -74,7 +72,6 @@ const AddCustomerScreen = ({ navigation, route }: Props) => {
             queryClient.invalidateQueries({ queryKey: ['customers'] });
         },
         onError: (error) => {
-            console.log("error", error)
             Alert.alert('Error', error.message || 'Failed to save invoice');
         },
     })
@@ -87,7 +84,6 @@ const AddCustomerScreen = ({ navigation, route }: Props) => {
             queryClient.invalidateQueries({ queryKey: ['customers'] });
         },
         onError: (error) => {
-            console.log("error", error)
             Alert.alert('Error', error.message || 'Failed to save invoice');
         },
     })

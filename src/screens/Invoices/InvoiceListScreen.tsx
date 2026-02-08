@@ -39,8 +39,6 @@ const InvoiceListScreen: React.FC<Props> = ({ navigation }) => {
         queryFn: fetchInvoices,
     })
 
-    console.log("invoices", invoices)
-
     const getStatusColor = (status: string): string => {
         switch (status) {
             case 'paid':

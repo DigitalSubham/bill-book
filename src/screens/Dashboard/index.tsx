@@ -33,8 +33,6 @@ const DashboardScreen: React.FC<Props> = ({ navigation }) => {
         queryFn: dashboardStats,
     })
 
-    console.log("dashboardData", dashboardData)
-
 
     return (
         <View style={styles.container}>
@@ -70,7 +68,7 @@ const DashboardScreen: React.FC<Props> = ({ navigation }) => {
                                 <Text style={styles.primaryStatLabel}>Total Sales</Text>
                                 <Avatar.Icon size={40} icon="currency-inr" style={styles.primaryIconOverlay} />
                             </View>
-                            <Text style={styles.primaryStatValue}>₹{(stats.totalSales / 100000)?.toFixed(1)}L</Text>
+                            <Text style={styles.primaryStatValue}>₹{(dashboardData?.totalRevenue / 100000)?.toFixed(1) || 0}L</Text>
                             <Text style={styles.primaryStatSubtext}>All time revenue</Text>
                         </Card.Content>
                     </Card>
@@ -114,38 +112,40 @@ const DashboardScreen: React.FC<Props> = ({ navigation }) => {
                                 <Text style={{ fontSize: 20 }}>📈</Text>
                             </View>
                             <Text style={styles.secondaryLabel}>Today</Text>
-                            <Text style={styles.secondaryValue}>₹{(stats.todaySales / 1000)?.toFixed(0)}K</Text>
+                            <Text style={styles.secondaryValue}>₹{(dashboardData?.revenueToday / 1000)?.toFixed(1)}K</Text>
                         </Card.Content>
                     </Card>
                 </View>
 
-                <View style={styles.monthStatsContainer}>
-                    <Card style={styles.monthCard}>
-                        <Card.Content>
+                <View style={styles.secondaryStatsRow}>
+                    <Card style={styles.secondaryCard}>
+                        <Card.Content style={styles.secondaryContent}>
+                            <View style={styles.secondaryIcon}>
+                                <Text style={{ fontSize: 20 }}>📦</Text>
+                            </View>
                             <Text style={styles.monthLabel}>This Week</Text>
-                            <Text style={styles.monthValue}>₹{(stats.monthSales / 100000)?.toFixed(2)}L</Text>
+                            <Text style={styles.monthValue}>₹{(dashboardData?.revenueLast7Days / 100000)?.toFixed(1) || 0}L</Text>
                         </Card.Content>
                     </Card>
-                </View>
-                <View style={styles.monthStatsContainer}>
-                    <Card style={styles.monthCard}>
-                        <Card.Content>
+                    <Card style={styles.secondaryCard}>
+                        <Card.Content style={styles.secondaryContent}>
+                            <View style={styles.secondaryIcon}>
+                                <Text style={{ fontSize: 20 }}>📈</Text>
+                            </View>
                             <Text style={styles.monthLabel}>This Month</Text>
-                            <Text style={styles.monthValue}>₹{(stats.monthSales / 100000)?.toFixed(2)}L</Text>
+                            <Text style={styles.monthValue}>₹{(dashboardData?.revenueLast30Days / 100000)?.toFixed(1) || 0}L</Text>
+                        </Card.Content>
+                    </Card>
+                    <Card style={styles.secondaryCard}>
+                        <Card.Content style={styles.secondaryContent}>
+                            <View style={styles.secondaryIcon}>
+                                <Avatar.Icon size={40} icon="file-document" style={styles.primaryIconOverlay} />
+                            </View>
+                            <Text style={styles.monthLabel}>Today Invoices </Text>
+                            <Text style={styles.monthValue}>{dashboardData?.invoicesToday || 0}</Text>
                         </Card.Content>
                     </Card>
                 </View>
-
-                <Card style={styles.recentCard}>
-                    <Card.Content style={styles.recentCardContent}>
-                        <View style={styles.recentHeader}>
-                            <Text style={styles.recentTitle}>Recent Invoices ({dashboardData?.totalUnpaidInvoices || 0})</Text>
-                            <IconButton icon="arrow-right" size={20} onPress={() => navigation.getParent()?.navigate("InvoicesTab")} />
-                        </View>
-
-
-                    </Card.Content>
-                </Card>
 
                 <View style={styles.quickActionsModern}>
                     <Card
@@ -201,21 +201,6 @@ const DashboardScreen: React.FC<Props> = ({ navigation }) => {
             />
         </View>
     )
-}
-
-const getStatusColor = (status: string): string => {
-    switch (status) {
-        case "paid":
-            return "#10B981"
-        case "pending":
-            return "#F59E0B"
-        case "partial":
-            return "#3B82F6"
-        case "overdue":
-            return "#EF4444"
-        default:
-            return "#9CA3AF"
-    }
 }
 
 const styles = StyleSheet.create({
@@ -361,6 +346,9 @@ const styles = StyleSheet.create({
     monthStatsContainer: {
         paddingHorizontal: 16,
         marginBottom: 16,
+        flexDirection: "row",
+        justifyContent: "space-between",
+        gap: 12,
     },
     monthCard: {
         backgroundColor: "#FFFFFF",
@@ -369,6 +357,7 @@ const styles = StyleSheet.create({
         paddingVertical: 2,
         borderWidth: 1,
         borderColor: "#F0F4F8",
+        flex: 1,
     },
     monthLabel: {
         fontSize: 12,

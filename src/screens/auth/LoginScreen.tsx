@@ -36,7 +36,6 @@ const LoginScreen = ({ navigation }: any) => {
 
             },
             onError: (err: any) => {
-                console.log("error", err)
                 Alert.alert("Error", err.response?.data?.message || "Failed");
             },
         });

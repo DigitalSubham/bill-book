@@ -55,8 +55,6 @@ export const generateInvoicePDF = async (
     totalAmountWords: convertAmountToWords(invoice.totalAmount),
   };
 
-  console.log('inv', invoice, inv);
-
   try {
     const file = await RNHTMLtoPDF.generatePDF({
       html: htmlTemplate(inv, busi),

@@ -37,7 +37,6 @@ export const InvoicePreviewScreen: React.FC<InvoicePreviewProps> = ({
     const generateInvoice = useMutation({
         mutationFn: (payload: any) => createInvoices(payload),
         onSuccess: (data) => {
-            console.log("data", data)
             if (data.data.invoice_number) {
                 invoice.invoiceNumber = data.data.invoice_number;
             }
@@ -46,7 +45,6 @@ export const InvoicePreviewScreen: React.FC<InvoicePreviewProps> = ({
             Alert.alert('Success', 'Invoice saved successfully');
         },
         onError: (error) => {
-            console.log("error", error)
             Alert.alert('Error', error.message || 'Failed to save invoice');
         },
     })
@@ -75,7 +73,7 @@ export const InvoicePreviewScreen: React.FC<InvoicePreviewProps> = ({
             igst_total: invoice.cgstTotal + invoice.sgstTotal,
             total_amount: invoice.totalAmount,
             received_amount: invoice.receivedAmount,
-            notes: " Thank you for your business! ",
+            notes: "Thank You",
         }
         generateInvoice.mutate(payload);
     };
@@ -90,11 +88,9 @@ export const InvoicePreviewScreen: React.FC<InvoicePreviewProps> = ({
         }
         try {
             setGenerating(true);
-            console.log("invoice", invoice)
             const filePath = await generateInvoicePDF(invoice, business, qrBase64);
             shareInvoicePDF(filePath)
         } catch (error) {
-            console.log(error)
             Alert.alert('Error', 'Failed to generate PDF');
         } finally {
             setGenerating(false);
@@ -217,7 +213,7 @@ export const InvoicePreviewScreen: React.FC<InvoicePreviewProps> = ({
                         <View style={styles.totalRow}>
                             <Text variant="bodyMedium">Taxable Amount</Text>
                             <Text variant="bodyMedium">
-                                ₹{invoice.taxableAmount}
+                                ₹{invoice.taxableAmount || invoice.totalAmount - (invoice.totalTax || 0)}
                             </Text>
                         </View>
                         <View style={styles.totalRow}>

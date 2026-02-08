@@ -43,7 +43,6 @@ const CustomerListScreen: React.FC<Props> = ({ navigation }) => {
             customer.mobile.includes(searchQuery) ||
             customer.email?.toLowerCase().includes(searchQuery.toLowerCase())
     );
-    console.log("customers", customers)
 
 
     if (isLoading) {
