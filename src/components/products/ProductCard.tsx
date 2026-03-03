@@ -4,10 +4,16 @@ import { Card, Chip, IconButton, Text } from 'react-native-paper'
 import { formTypeEnum, ProductType } from '../../types'
 import { useNavigation } from '@react-navigation/native'
 import { ProductListScreenNavigationProp } from '../../screens/Inventory/ProductListScreen'
+import { simpleToCompound } from '../../utils/helper'
 
 const ProductCard = ({ item }: { item: ProductType }) => {
-    const isLowStock = item.minStock && item.stock <= item.minStock
+    const isLowStock = item.minStock && Number.parseFloat(item.stock) <= item.minStock
     const navigation = useNavigation<ProductListScreenNavigationProp>()
+
+    const displayStock =
+        item.unitType === "COMPOUND"
+            ? `${simpleToCompound(item.stock, item.conversionFactor)} ${item.unit} | ${item.stock} ${item.baseUnit}`
+            : `${item.stock} ${item.baseUnit}`;
 
     return (
         <Card
@@ -22,7 +28,7 @@ const ProductCard = ({ item }: { item: ProductType }) => {
                         </Text>
                         {item.description && (
                             <Text variant="bodySmall" style={styles.description} numberOfLines={1}>
-                                {item.description}
+                                desc: {item.description}
                             </Text>
                         )}
                     </View>
@@ -49,7 +55,7 @@ const ProductCard = ({ item }: { item: ProductType }) => {
                         style={[styles.stockChip, isLowStock ? styles.lowStockChip : null]}
                         textStyle={[styles.stockText, isLowStock ? styles.lowStockText : null]}
                     >
-                        {item.stock} {item.unit}
+                        {displayStock}
                     </Chip>
 
                     {isLowStock && (

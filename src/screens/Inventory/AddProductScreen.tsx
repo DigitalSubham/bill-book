@@ -13,14 +13,17 @@ import {
     Card,
     HelperText,
     Chip,
+    Checkbox,
 } from 'react-native-paper';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { RootStackParamList, ProductType, ProductBaseType, formTypeEnum } from '../../types';
-
+import { RootStackParamList, ProductType, ProductBaseType, formTypeEnum, ProductFormErrors } from '../../types';
 import { createProduct, fetchProductById, updateProduct } from '../../apis/productApis';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { errorToast, successToast } from '../../utils/toast';
 import AppDropdownPicker from '../../components/common/Dropdown';
+import { CATEGORY_OPTIONS, TAX_RATES, UNIT_OPTIONS } from '../../constants/state';
+import { productValidateForm } from '../../utils/validation';
+import { compoundToSimple, simpleToCompound } from '../../utils/helper';
 
 type AddProductScreenNavigationProp = NativeStackNavigationProp<
     RootStackParamList
@@ -32,38 +35,6 @@ interface Props {
         params: { productId?: string, formType: formTypeEnum };
     }
 }
-
-interface FormErrors {
-    name?: string;
-    mrp?: string;
-    rate?: string;
-    taxRate?: string;
-    stock?: string;
-    unit?: string
-}
-
-export const UNIT_OPTIONS = [
-    { label: 'PCS', value: 'PCS' },
-    { label: 'KG', value: 'KG' },
-    { label: 'LITER', value: 'LITER' },
-    { label: 'METER', value: 'METER' },
-    { label: 'BOX', value: 'BOX' },
-    { label: 'PACK', value: 'PACK' },
-    { label: 'DOZEN', value: 'DOZEN' },
-];
-
-export const CATEGORY_OPTIONS = [
-    { label: 'General', value: 'General' },
-    { label: 'Electronics', value: 'Electronics' },
-    { label: 'Clothing', value: 'Clothing' },
-    { label: 'Food', value: 'Food' },
-    { label: 'Stationery', value: 'Stationery' },
-    { label: 'Hardware', value: 'Hardware' },
-    { label: 'Other', value: 'Other' },
-];
-
-
-const TAX_RATES = ['0.00', '5.00', '12.00', '18.00', '28.00'];
 
 
 const AddProductScreen: React.FC<Props> = ({ navigation, route }) => {
@@ -77,22 +48,26 @@ const AddProductScreen: React.FC<Props> = ({ navigation, route }) => {
         staleTime: 5 * 60 * 1000,
     });
 
-
     const [formData, setFormData] = useState<ProductBaseType>({
         name: '',
         description: '',
         mrp: '',
         rate: '',
         taxRate: "5.00",
-        unit: 'PCS',
-        stock: 0,
+        unit: 'BOX',
+        stock: "0",
         minStock: 10,
         category: 'General',
         barcode: '',
         hsnCode: "",
+        baseUnit: 'PCS',
+        conversionFactor: "1",
+        unitType: 'SIMPLE',
     });
 
-    const [errors, setErrors] = useState<FormErrors>({});
+    console.log("formData", formData)
+
+    const [errors, setErrors] = useState<ProductFormErrors>({});
     const queryClient = useQueryClient();
 
 
@@ -103,10 +78,13 @@ const AddProductScreen: React.FC<Props> = ({ navigation, route }) => {
             selling_rate: product.rate,
             mrp: product.mrp,
             category: product.category,
-            stock: product.stock,
+            stock: Number.parseFloat(product.stock),
             sku: product.barcode, // or generate SKU
             unit: product.unit,
             tax_percent: product.taxRate,
+            base_unit: product.baseUnit,
+            conversion_factor: Number.parseFloat(product.conversionFactor),
+            unit_type: product.unitType,
         }),
         onSuccess: () => {
             queryClient.invalidateQueries({
@@ -123,9 +101,12 @@ const AddProductScreen: React.FC<Props> = ({ navigation, route }) => {
             selling_rate: product.rate,
             mrp: Number.parseFloat(product.mrp),
             category: product.category,
-            stock: product.stock,
+            stock: Number.parseFloat(product.stock),
             unit: product.unit,
             tax_percent: product.taxRate,
+            base_unit: product.baseUnit,
+            conversion_factor: Number.parseFloat(product.conversionFactor),
+            unit_type: product.unitType,
         }),
         onSuccess: (updatedProduct) => {
             // update single-product cache
@@ -149,11 +130,17 @@ const AddProductScreen: React.FC<Props> = ({ navigation, route }) => {
                 rate: existingProduct.selling_rate,
                 taxRate: existingProduct.tax_percent,
                 unit: existingProduct.unit,
-                stock: existingProduct.stock,
+                stock:
+                    existingProduct.unit_type === "COMPOUND" ?
+                        simpleToCompound(existingProduct.stock, existingProduct.conversion_factor)
+                        : existingProduct.stock,
                 minStock: existingProduct.minStock || '10',
                 category: existingProduct.category || 'General',
                 barcode: existingProduct.barcode || '',
                 hsnCode: existingProduct.hsnCode || '',
+                baseUnit: existingProduct.baseUnit || 'PCS',
+                conversionFactor: existingProduct.conversionFactor || 1,
+                unitType: existingProduct.unit_type || 'SIMPLE',
             });
         }
     }, [isEditMode, existingProduct]);
@@ -164,40 +151,6 @@ const AddProductScreen: React.FC<Props> = ({ navigation, route }) => {
         });
     }, [isEditMode, navigation]);
 
-    const validateForm = (): boolean => {
-        const newErrors: FormErrors = {};
-
-        if (!formData.name.trim()) {
-            newErrors.name = 'Product name is required';
-        }
-
-        if (!formData.mrp.trim()) {
-            newErrors.mrp = 'MRP is required';
-        } else if (Number.parseFloat(formData.mrp) <= 0) {
-            newErrors.mrp = 'MRP must be greater than 0';
-        }
-
-        if (!formData.rate.trim()) {
-            newErrors.rate = 'Rate is required';
-        } else if (Number.parseFloat(formData.rate) <= 0) {
-            newErrors.rate = 'Rate must be greater than 0';
-        } else if (Number.parseFloat(formData.rate) > Number.parseFloat(formData.mrp)) {
-            newErrors.rate = 'Rate cannot be greater than MRP';
-        }
-
-        if (!formData.taxRate) {
-            newErrors.taxRate = 'Tax rate is required';
-        }
-
-        if (!formData.stock) {
-            newErrors.stock = 'Stock quantity is required';
-        } else if (formData.stock < 0) {
-            newErrors.stock = 'Stock cannot be negative';
-        }
-
-        setErrors(newErrors);
-        return Object.keys(newErrors).length === 0;
-    };
 
     const calculateProfit = (): string => {
         const mrp = Number.parseFloat(formData.mrp) || 0;
@@ -208,8 +161,7 @@ const AddProductScreen: React.FC<Props> = ({ navigation, route }) => {
     };
 
     const handleSubmit = () => {
-        if (!validateForm()) {
-            Alert.alert('Validation Error', 'Please fix the errors before submitting');
+        if (!productValidateForm(formData, setErrors)) {
             return;
         }
 
@@ -222,8 +174,11 @@ const AddProductScreen: React.FC<Props> = ({ navigation, route }) => {
             rate: formData.rate,
             taxRate: formData.taxRate,
             unit: formData.unit,
-            stock: formData.stock,
+            stock: formData.unitType === "COMPOUND" ? compoundToSimple(formData.stock, formData.conversionFactor) : formData.stock, // store in base unit
             minStock: formData.minStock || undefined,
+            baseUnit: formData.baseUnit,
+            conversionFactor: formData.conversionFactor,
+            unitType: formData.unitType,
         };
 
         if (isEditMode) {
@@ -247,11 +202,14 @@ const AddProductScreen: React.FC<Props> = ({ navigation, route }) => {
                         rate: '',
                         taxRate: "5.00",
                         unit: 'PCS',
-                        stock: 0,
+                        stock: "0",
                         minStock: 10,
                         category: 'General',
                         barcode: '',
                         hsnCode: '',
+                        baseUnit: '',
+                        conversionFactor: "1",
+                        unitType: 'SIMPLE',
                     });
                     setErrors({});
                     navigation.goBack()
@@ -281,12 +239,25 @@ const AddProductScreen: React.FC<Props> = ({ navigation, route }) => {
         );
     };
 
-    const updateFormData = (field: keyof ProductType, value: string) => {
-        setFormData({ ...formData, [field]: value });
-        if (errors[field as keyof FormErrors]) {
-            setErrors({ ...errors, [field]: undefined });
+    const updateFormData = (field: keyof ProductBaseType, value: any) => {
+        if (field === "conversionFactor" && formData.unitType === "COMPOUND") {
+            const simpleStock = Number.parseFloat(formData.stock) || 0;
+            const newCompoundStock = simpleStock / Number.parseFloat(value);
+            setFormData(prev => ({
+                ...prev,
+                stock: String(newCompoundStock),
+                [field]: value,
+            }));
+
+        } else {
+            setFormData(prev => ({
+                ...prev,
+                [field]: value,
+            }));
         }
     };
+
+    console.log("error", errors, formData, existingProduct)
 
     return (
         <View style={styles.container}>
@@ -419,14 +390,92 @@ const AddProductScreen: React.FC<Props> = ({ navigation, route }) => {
                 {/* Inventory */}
                 <Card style={styles.card}>
                     <Card.Content>
-                        <Text variant="titleMedium" style={styles.sectionTitle}>
-                            Inventory
-                        </Text>
+                        <View>
+                            <Text variant="titleMedium" style={styles.sectionTitle}>
+                                Inventory
+                            </Text>
+
+                            <View style={styles.checkboxRow}>
+                                <View style={styles.checkboxItem}>
+                                    <Checkbox
+                                        status={formData.unitType === 'SIMPLE' ? 'checked' : 'unchecked'}
+                                        onPress={() => {
+                                            setFormData({
+                                                ...formData,
+                                                unitType: 'SIMPLE',
+                                                baseUnit: "PCS",
+                                                stock: compoundToSimple(formData.stock, formData.conversionFactor),
+                                            })
+                                        }}
+                                    />
+                                    <Text>Simple Unit</Text>
+                                </View>
+
+                                <View style={styles.checkboxItem}>
+                                    <Checkbox
+                                        status={formData.unitType === 'COMPOUND' ? 'checked' : 'unchecked'}
+                                        onPress={() => setFormData({ ...formData, unitType: 'COMPOUND', stock: simpleToCompound(formData.stock, formData.conversionFactor) })}
+                                    />
+                                    <Text>Compound Unit</Text>
+                                </View>
+                            </View>
+                        </View>
+
+
+                        <View style={{ ...styles.row, marginBottom: 8 }}>
+                            <View style={styles.halfWidth}>
+                                <AppDropdownPicker
+                                    label="Unit *"
+                                    value={formData.unitType === "COMPOUND" ? formData.unit : formData.baseUnit}
+                                    items={UNIT_OPTIONS}
+                                    onChange={(value) => updateFormData(formData.unitType === "COMPOUND" ? 'unit' : "baseUnit", value)}
+                                    zIndex={2000}
+                                />
+                            </View>
+
+
+                            {formData.unitType === 'COMPOUND' &&
+                                <>
+                                    <View style={styles.halfWidth}>
+                                        <TextInput
+                                            label="Value *"
+                                            value={String(formData.conversionFactor)}
+                                            onChangeText={(text) => updateFormData('conversionFactor', text)}
+                                            mode="outlined"
+                                            keyboardType="numeric"
+                                            style={{ marginTop: 15 }}
+                                            error={!!errors.conversionFactor}
+                                        />
+                                    </View>
+
+                                    <View style={styles.halfWidth}>
+                                        <AppDropdownPicker
+                                            label="Base Unit *"
+                                            value={formData.baseUnit}
+                                            items={UNIT_OPTIONS}
+                                            onChange={(value) => updateFormData('baseUnit', value)}
+                                            zIndex={1000}
+                                        />
+                                    </View>
+                                </>}
+
+                        </View>
+                        {formData.unit !== formData.baseUnit && formData.unitType === 'COMPOUND' && (
+                            <View style={styles.conversionContainer}>
+                                <Text style={styles.conversionText}>
+                                    1 {formData.unit} = {formData.conversionFactor} {formData.baseUnit}
+                                </Text>
+
+                                {!!formData.stock && <Text style={styles.conversionText}>
+                                    | Stock = {formData.stock} {formData.unit} ({compoundToSimple(formData.stock, formData.conversionFactor)} {formData.baseUnit})
+                                </Text>}
+                            </View>
+                        )}
 
                         <View style={styles.row}>
                             <View style={styles.halfWidth}>
                                 <TextInput
-                                    label="Stock Quantity *"
+                                    label={`Stock Quantity (${formData.unitType === "COMPOUND" ? formData.unit : formData.baseUnit}) *`}
                                     value={String(formData.stock)}
                                     onChangeText={(text) => updateFormData('stock', text)}
                                     mode="outlined"
@@ -434,11 +483,6 @@ const AddProductScreen: React.FC<Props> = ({ navigation, route }) => {
                                     style={styles.input}
                                     error={!!errors.stock}
                                 />
-                                {errors.stock && (
-                                    <HelperText type="error" visible={!!errors.stock}>
-                                        {errors.stock}
-                                    </HelperText>
-                                )}
                             </View>
 
                             <View style={styles.halfWidth}>
@@ -453,20 +497,13 @@ const AddProductScreen: React.FC<Props> = ({ navigation, route }) => {
                             </View>
                         </View>
 
-                        {/* Unit Selection */}
-                        <AppDropdownPicker
-                            label="Unit *"
-                            value={formData.unit}
-                            items={UNIT_OPTIONS}
-                            onChange={(value) => updateFormData('unit', value)}
-                            error={errors.unit}
-                            zIndex={2000}
-                        />
-
-
-                        <HelperText type="info">
+                        {errors.stock || errors.conversionFactor || errors.unit ? (
+                            <HelperText type="error" visible={!!errors.stock || !!errors.conversionFactor || !!errors.unit}>
+                                {errors.stock || errors.conversionFactor || errors.unit}
+                            </HelperText>
+                        ) : <HelperText type="info">
                             You'll be notified when stock falls below minimum level
-                        </HelperText>
+                        </HelperText>}
                     </Card.Content>
                 </Card>
 
@@ -606,6 +643,36 @@ const styles = StyleSheet.create({
     },
     bottomSpace: {
         height: 20,
+    },
+    conversionContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 12,
+        backgroundColor: '#f0f4ff',
+        padding: 1,
+        borderRadius: 8,
+    },
+
+    conversionText: {
+        fontSize: 14,
+        fontWeight: '500',
+        marginHorizontal: 6,
+    },
+
+    conversionInput: {
+        width: 80,
+        height: 50,
+    },
+
+    checkboxRow: {
+        flexDirection: 'row',
+        marginBottom: 12,
+    },
+
+    checkboxItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginRight: 20,
     },
 });
 

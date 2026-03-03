@@ -28,6 +28,7 @@ import { CustomerType, DatePickerType, formTypeEnum, InvoiceBase, InvoiceItem, P
 import { useQuery } from '@tanstack/react-query';
 import { fetchProducts } from '../../apis/productApis';
 import { fetchCustomer } from '../../apis/customerApis';
+import { simpleToCompound } from '../../utils/helper';
 
 type AddCustomerScreenNavigationProp = NativeStackNavigationProp<
   RootStackParamList
@@ -76,6 +77,7 @@ const CreateInvoiceScreen: React.FC<Props> = ({ navigation }) => {
     p.name.toLowerCase().includes(searchQuery.toLowerCase()),
   );
 
+  console.log("filteredProducts", filteredProducts)
 
   const selectCustomer = (selectedCustomer: CustomerType) => {
     setCustomer(selectedCustomer)
@@ -403,14 +405,22 @@ const CreateInvoiceScreen: React.FC<Props> = ({ navigation }) => {
             style={styles.searchbar}
           />
           <ScrollView style={styles.modalScroll}>
-            {filteredProducts.map(p => (
-              <List.Item
-                key={p.id}
-                title={p.name}
-                description={`Rate: ₹${p.rate} | Stock: ${p.stock}`}
-                onPress={() => addProduct(p)}
-              />
-            ))}
+            {filteredProducts.map(p => {
+              const displayStock =
+                p.unitType === "COMPOUND"
+                  ? `${simpleToCompound(p.stock, p.conversionFactor)} ${p.unit} | ${p.stock} ${p.baseUnit}`
+                  : `${p.stock} ${p.baseUnit}`;
+              const description = `Rate: ₹${p.rate} | Stock: ${displayStock}`;
+
+              return (
+                <List.Item
+                  key={p.id}
+                  title={p.name}
+                  description={description}
+                  onPress={() => addProduct(p)}
+                />
+              )
+            })}
           </ScrollView>
         </Modal>
       </Portal>

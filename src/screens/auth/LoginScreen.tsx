@@ -54,7 +54,7 @@ const LoginScreen = ({ navigation }: any) => {
                 navigation.navigate("OTPVerification", { mobile });
             },
             onError: (err: any) => {
-                Alert.alert("Error", err.response?.data?.message || "Failed");
+                Alert.alert("Error", err?.message || "Failed");
             },
         });
     };

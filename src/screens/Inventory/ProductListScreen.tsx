@@ -61,7 +61,7 @@ const ProductListScreen: React.FC<Props> = ({ navigation }) => {
                 case "name":
                     return a.name.localeCompare(b.name);
                 case "stock":
-                    return a.stock - b.stock;
+                    return (Number.parseFloat(a.stock) || 0) - (Number.parseFloat(b.stock) || 0);
                 case "price":
                     return Number(b.rate) - Number(a.rate);
                 default:

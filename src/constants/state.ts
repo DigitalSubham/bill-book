@@ -28,3 +28,25 @@ export const STATE_OPTIONS = [
   { key: 'UK', label: 'Uttarakhand', value: 'Uttarakhand' },
   { key: 'WB', label: 'West Bengal', value: 'West Bengal' },
 ];
+
+export const UNIT_OPTIONS = [
+  { label: 'PCS', value: 'PCS' },
+  { label: 'KG', value: 'KG' },
+  { label: 'LITER', value: 'LITER' },
+  { label: 'METER', value: 'METER' },
+  { label: 'BOX', value: 'BOX' },
+  { label: 'PACK', value: 'PACK' },
+  { label: 'DOZEN', value: 'DOZEN' },
+];
+
+export const CATEGORY_OPTIONS = [
+  { label: 'General', value: 'General' },
+  { label: 'Electronics', value: 'Electronics' },
+  { label: 'Clothing', value: 'Clothing' },
+  { label: 'Food', value: 'Food' },
+  { label: 'Stationery', value: 'Stationery' },
+  { label: 'Hardware', value: 'Hardware' },
+  { label: 'Other', value: 'Other' },
+];
+
+export const TAX_RATES = ['0.00', '5.00', '12.00', '18.00', '28.00'];

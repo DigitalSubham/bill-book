@@ -1,12 +1,9 @@
 import axios from 'axios';
 import { getToken } from '../utils/storage';
-
-const baseURLLive =
-  'https://3nw8jtjy48.execute-api.ap-south-1.amazonaws.com/api/';
-const baseURLLocal = 'http://10.41.38.53:3001/api/';
+import config from '../config';
 
 const instance = axios.create({
-  baseURL: baseURLLocal,
+  baseURL: config.base_url.BASE_URL,
 });
 
 // 🔥 Add token before every request

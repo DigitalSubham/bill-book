@@ -64,6 +64,16 @@ export interface Business {
   logo?: string;
 }
 
+export interface ProductFormErrors {
+  name?: string;
+  mrp?: string;
+  rate?: string;
+  taxRate?: string;
+  stock?: string;
+  conversionFactor?: string;
+  unit?: string;
+}
+
 export interface ProductBaseType {
   name: string;
   description?: string;
@@ -72,10 +82,13 @@ export interface ProductBaseType {
   rate: string;
   taxRate: string;
   unit: string;
-  stock: number;
+  stock: string;
   minStock?: number;
   barcode?: string;
   hsnCode?: string;
+  baseUnit: string;
+  conversionFactor: string;
+  unitType: 'SIMPLE' | 'COMPOUND';
 }
 
 export interface ProductType extends ProductBaseType {

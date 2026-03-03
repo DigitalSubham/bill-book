@@ -28,3 +28,15 @@ export const format = (v: Nullable<number>): string => {
 export const currency = (v: Nullable<number> = 0): string => {
   return `₹${format(v)}`;
 };
+
+export const simpleToCompound = (stock: string, conf: string) => {
+  return String(
+    (Number.parseFloat(String(stock)) || 0) / Number.parseFloat(String(conf)),
+  );
+};
+
+export const compoundToSimple = (stock: string, conf: string) => {
+  return String(
+    (Number.parseFloat(String(stock)) || 0) * Number.parseFloat(String(conf)),
+  );
+};
