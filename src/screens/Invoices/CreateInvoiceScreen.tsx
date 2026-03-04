@@ -17,6 +17,7 @@ import {
   Modal,
   List,
   Searchbar,
+  Checkbox,
 } from 'react-native-paper';
 import DatePicker from 'react-native-date-picker';
 import {
@@ -24,7 +25,7 @@ import {
   calculateInvoiceTotals,
 } from '../../utils/calculations';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { CustomerType, DatePickerType, formTypeEnum, InvoiceBase, InvoiceItem, ProductType, RootStackParamList } from '../../types';
+import { CustomerType, DatePickerType, formTypeEnum, InvoiceBase, InvoiceForm, InvoiceItem, ProductType, RootStackParamList } from '../../types';
 import { useQuery } from '@tanstack/react-query';
 import { fetchProducts } from '../../apis/productApis';
 import { fetchCustomer } from '../../apis/customerApis';
@@ -40,10 +41,6 @@ interface Props {
 
 const CreateInvoiceScreen: React.FC<Props> = ({ navigation }) => {
   const [customer, setCustomer] = useState<CustomerType | null>(null);
-  const [invoiceDate, setInvoiceDate] = useState<Date>(new Date());
-  const [dueDate, setDueDate] = useState<Date>(
-    new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-  );
 
   const [items, setItems] = useState<InvoiceItem[]>([]);
   const [showDatePicker, setShowDatePicker] = useState<boolean>(false);
@@ -53,7 +50,13 @@ const CreateInvoiceScreen: React.FC<Props> = ({ navigation }) => {
   const [showCustomerModal, setShowCustomerModal] = useState<boolean>(false);
   const [showProductModal, setShowProductModal] = useState<boolean>(false);
   const [searchQuery, setSearchQuery] = useState<string>('');
-  const [receivedAmount, setReceivedAmount] = useState<string>('0');
+  const [form, setForm] = useState<InvoiceForm>({
+    recievedAmount: '0',
+    invoiceDate: new Date(),
+    dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+    discount: '0',
+    discountType: 'FIXED-AMOUNT',
+  });
 
   const { data: customers = [] } = useQuery<CustomerType[]>({
     queryKey: ['customers'],
@@ -77,7 +80,6 @@ const CreateInvoiceScreen: React.FC<Props> = ({ navigation }) => {
     p.name.toLowerCase().includes(searchQuery.toLowerCase()),
   );
 
-  console.log("filteredProducts", filteredProducts)
 
   const selectCustomer = (selectedCustomer: CustomerType) => {
     setCustomer(selectedCustomer)
@@ -139,7 +141,7 @@ const CreateInvoiceScreen: React.FC<Props> = ({ navigation }) => {
   };
 
 
-  const totals = calculateInvoiceTotals(items);
+  const totals = calculateInvoiceTotals(items, form.discount, form.discountType);
   const handlePreviewInvoice = () => {
     if (!customer) {
       Alert.alert('Error', 'Please select a customer');
@@ -153,15 +155,16 @@ const CreateInvoiceScreen: React.FC<Props> = ({ navigation }) => {
 
     const invoice: InvoiceBase = {
       customer,
-      invoiceDate,
-      dueDate,
+      invoiceDate: form.invoiceDate,
+      dueDate: form.dueDate,
       items,
       ...totals,
-      receivedAmount: Number.parseFloat(receivedAmount) || 0,
+      receivedAmount: Number.parseFloat(form.recievedAmount) || 0,
+      discountType: form.discountType,
       status:
-        Number(receivedAmount) >= totals.totalAmount
+        Number(form.recievedAmount) >= totals.totalAmount
           ? 'paid'
-          : Number(receivedAmount) > 0
+          : Number(form.recievedAmount) > 0
             ? 'partial'
             : 'pending',
     };
@@ -219,7 +222,7 @@ const CreateInvoiceScreen: React.FC<Props> = ({ navigation }) => {
                   }}
                 >
                   <Text variant="bodyLarge" style={styles.dateText}>
-                    {invoiceDate.toLocaleDateString()}
+                    {form.invoiceDate.toLocaleDateString()}
                   </Text>
                 </TouchableOpacity>
               </View>
@@ -232,7 +235,7 @@ const CreateInvoiceScreen: React.FC<Props> = ({ navigation }) => {
                   }}
                 >
                   <Text variant="bodyLarge" style={styles.dateText}>
-                    {dueDate.toLocaleDateString()}
+                    {form.dueDate.toLocaleDateString()}
                   </Text>
                 </TouchableOpacity>
               </View>
@@ -306,6 +309,36 @@ const CreateInvoiceScreen: React.FC<Props> = ({ navigation }) => {
           </Card.Content>
         </Card>
 
+        <Card style={styles.card}>
+          <Card.Content>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <Text variant="titleMedium" style={{ fontWeight: 'bold' }}>
+                Discount
+              </Text>
+
+              <Checkbox.Item
+                label="%"
+                status={form.discountType === 'PERCENTAGE' ? 'checked' : 'unchecked'}
+                onPress={() => setForm({ ...form, discountType: 'PERCENTAGE' })}
+              />
+              <Checkbox.Item
+                label="₹"
+                status={form.discountType === 'FIXED-AMOUNT' ? 'checked' : 'unchecked'}
+                onPress={() => setForm({ ...form, discountType: 'FIXED-AMOUNT' })}
+              />
+            </View>
+
+            <TextInput
+              label={`Discount (${form.discountType === 'PERCENTAGE' ? '%' : '₹'})`}
+              value={form.discount}
+              onChangeText={(text) => { setForm({ ...form, discount: text }) }}
+              keyboardType="numeric"
+              mode="outlined"
+              style={styles.receivedInput}
+            />
+          </Card.Content>
+        </Card>
+
         {/* Totals */}
         {items.length > 0 && (
           <Card style={styles.card}>
@@ -322,6 +355,12 @@ const CreateInvoiceScreen: React.FC<Props> = ({ navigation }) => {
                 <Text variant="bodyMedium">SGST</Text>
                 <Text variant="bodyMedium">₹{totals.sgstTotal?.toFixed(2)}</Text>
               </View>
+              {totals.discountAmount > 0 && (
+                <View style={styles.totalRow}>
+                  <Text variant="bodyMedium">discount ({form.discountType === 'PERCENTAGE' ? '%' : '₹'})</Text>
+                  <Text variant="bodyMedium">₹{totals.discountAmount?.toFixed(2)}</Text>
+                </View>
+              )}
               <Divider style={styles.divider} />
               <View style={styles.totalRow}>
                 <Text variant="titleLarge" style={styles.totalLabel}>
@@ -333,8 +372,8 @@ const CreateInvoiceScreen: React.FC<Props> = ({ navigation }) => {
               </View>
               <TextInput
                 label="Received Amount"
-                value={receivedAmount}
-                onChangeText={setReceivedAmount}
+                value={form.recievedAmount}
+                onChangeText={(text) => setForm({ ...form, recievedAmount: text })}
                 keyboardType="numeric"
                 mode="outlined"
                 style={styles.receivedInput}
@@ -429,14 +468,14 @@ const CreateInvoiceScreen: React.FC<Props> = ({ navigation }) => {
       <DatePicker
         modal
         open={showDatePicker}
-        date={datePickerType === 'invoice' ? invoiceDate : dueDate}
+        date={datePickerType === 'invoice' ? form.invoiceDate : form.dueDate}
         mode="date"
         onConfirm={date => {
           setShowDatePicker(false);
           if (datePickerType === 'invoice') {
-            setInvoiceDate(date);
+            setForm({ ...form, invoiceDate: date });
           } else {
-            setDueDate(date);
+            setForm({ ...form, dueDate: date });
           }
         }}
         onCancel={() => setShowDatePicker(false)}

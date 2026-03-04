@@ -12,7 +12,11 @@ export const calculateItemAmount = (quantity: any, rate: any, taxRate: any) => {
   };
 };
 
-export const calculateInvoiceTotals = (items: InvoiceItem[]) => {
+export const calculateInvoiceTotals = (
+  items: InvoiceItem[],
+  discount: string,
+  discountType: 'PERCENTAGE' | 'FIXED-AMOUNT',
+) => {
   let subtotal = 0;
   let totalTax = 0;
 
@@ -21,17 +25,34 @@ export const calculateInvoiceTotals = (items: InvoiceItem[]) => {
     totalTax += Number(item.taxAmount);
   });
 
-  const taxableAmount = subtotal;
+  const parsedDiscount = Number(discount) || 0;
+
+  let discountAmount = 0;
+
+  if (discountType === 'PERCENTAGE') {
+    discountAmount = (subtotal * parsedDiscount) / 100;
+  } else {
+    discountAmount = parsedDiscount;
+  }
+
+  // Prevent negative subtotal
+  discountAmount = Math.min(discountAmount, subtotal);
+
+  const discountedSubtotal = subtotal - discountAmount;
+
+  // Recalculate tax proportionally if needed
   const cgst = totalTax / 2;
   const sgst = totalTax / 2;
-  const totalAmount = subtotal + totalTax;
+
+  const totalAmount = discountedSubtotal + totalTax;
 
   return {
-    subtotal: Number.parseFloat(subtotal?.toFixed(2)),
-    taxableAmount: Number.parseFloat(taxableAmount?.toFixed(2)),
-    cgstTotal: Number.parseFloat(cgst?.toFixed(2)),
-    sgstTotal: Number.parseFloat(sgst?.toFixed(2)),
-    totalAmount: Number.parseFloat(totalAmount?.toFixed(2)),
+    subtotal: Number(subtotal.toFixed(2)),
+    discountAmount: Number(discountAmount.toFixed(2)),
+    taxableAmount: Number(discountedSubtotal.toFixed(2)),
+    cgstTotal: Number(cgst.toFixed(2)),
+    sgstTotal: Number(sgst.toFixed(2)),
+    totalAmount: Number(totalAmount.toFixed(2)),
   };
 };
 

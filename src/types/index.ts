@@ -122,6 +122,16 @@ export interface InvoiceBase {
   dueDate: Date;
   status: 'paid' | 'pending' | 'partial' | 'overdue';
   createdAt?: Date;
+  discountAmount?: number;
+  discountType?: 'PERCENTAGE' | 'FIXED-AMOUNT';
+}
+
+export interface InvoiceForm {
+  recievedAmount: string;
+  invoiceDate: Date;
+  dueDate: Date;
+  discount: string;
+  discountType: 'PERCENTAGE' | 'FIXED-AMOUNT';
 }
 
 export interface InvoiceType extends InvoiceBase {

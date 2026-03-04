@@ -1,6 +1,6 @@
 import { currency, safe } from './helper';
 
-export const htmlTemplate = (invoice: any = {}, business: any = {}) => {
+export const A5htmlTemplate = (invoice: any = {}, business: any = {}) => {
   const renderItems = () => {
     if (!invoice.items?.length) {
       return `<tr><td colspan="7" style="text-align:center;">No items</td></tr>`;
@@ -8,7 +8,9 @@ export const htmlTemplate = (invoice: any = {}, business: any = {}) => {
 
     return invoice.items
       .map((it: any, idx: number) => {
-        const pageBreak = idx > 0 && idx % 21 === 0;
+        /* CHANGED: 21 -> 15 items per page */
+        const pageBreak = idx > 0 && idx % 15 === 0;
+
         return `
           ${pageBreak ? `<tr style="page-break-before:always"></tr>` : ''}
           <tr>
@@ -32,63 +34,218 @@ export const htmlTemplate = (invoice: any = {}, business: any = {}) => {
 <title>Invoice</title>
 
 <style>
-@page { size: A4; margin: 10mm 10mm 12mm 10mm; }
-body { font-family: Arial, Helvetica, sans-serif; font-size: 10.5px; line-height: 1.25; color: #000; margin: 0; padding: 0; }
-.container { padding: 4px; }
 
-.company { font-size: 15px; font-weight: 700; text-transform: uppercase; margin: 0; }
-.comp-address { font-size: 10px; line-height: 1.3; margin-top: 2px; }
-.addr-row { margin-top: 2px; }
-.value { margin-right: 0px; }
-.sep { margin: 0 2px; color: #000; }
-.signature {
-  margin-top: 30px;
-  text-align: right;
+/* CHANGED: A4 -> A5 */
+@page {
+  size: 148mm 210mm;
+  margin: 2mm;
 }
 
-.header-row { display: flex; justify-content: space-between; align-items: flex-start; }
-.invoice-title-right { font-weight: 700; font-size: 12px; text-transform: uppercase; text-align: right; white-space: nowrap; }
+/* CHANGED: smaller font */
+html,body {
+width: 148mm;
+  height: 210mm;
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 8.5px;
+  line-height: 1.15;
+  color: #000;
+  margin: 0;
+  padding: 0;
+}
 
-.box { border: 1px solid #000; padding: 5px; font-size: 10.5px; line-height: 1.25; }
-.two-cols { display: flex; gap: 6px; margin-top: 4px; }
+.container { padding: 0px; } /* CHANGED */
+
+/* CHANGED: smaller company title */
+.company {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  margin: 0;
+}
+
+/* CHANGED */
+.comp-address {
+  font-size: 8px;
+  line-height: 1.2;
+  margin-top: 2px;
+}
+
+.addr-row { margin-top: 2px; }
+
+.value { margin-right: 0px; }
+.sep { margin: 0 2px; color: #000; }
+
+/* CHANGED */
+.signature {
+  margin-top: 15px;
+  text-align: right;
+  font-size: 8.5px;
+}
+
+.header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+/* CHANGED */
+.invoice-title-right {
+  font-weight: 700;
+  font-size: 10px;
+  text-transform: uppercase;
+  text-align: right;
+  white-space: nowrap;
+}
+
+/* CHANGED: smaller padding */
+.box {
+  border: 1px solid #000;
+  padding: 3px;
+  font-size: 8.5px;
+  line-height: 1.2;
+}
+
+.two-cols {
+  display: flex;
+  gap: 4px;
+  margin-top: 3px;
+}
+
 .col { flex: 1; }
 
-table.items { width: 100%; border-collapse: collapse; margin-top: 6px; table-layout: fixed; font-size: 10.5px; }
-table.items th, table.items td { border: 1px solid #000; padding: 3px 4px; }
-table.items th { background: #f2f2f2; font-weight: 700; }
+/* CHANGED */
+table.items {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 5px;
+  table-layout: fixed;
+  font-size: 8.5px;
+}
+
+/* CHANGED */
+table.items th,
+table.items td {
+  border: 1px solid #000;
+  padding: 2px 3px;
+}
+
+/* CHANGED */
+table.items th {
+  background: #f2f2f2;
+  font-weight: 700;
+}
 
 thead { display: table-header-group; }
+
+/* NEW: fixed row height to fit 15 rows */
+table.items tr {
+  height: 14px;
+}
+
 tr { page-break-inside: avoid; }
 
 .c-sno { width: 5%; }
-.c-item { width: 43%; }
-.c-qty { width: 7%; text-align: center; }
-.c-mrp, .c-rate, .c-tax, .c-amt { width: 11%; text-align: right; }
+
+/* NEW: prevent long names breaking row */
+.c-item {
+  width: 43%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.c-qty {
+  width: 7%;
+  text-align: center;
+}
+
+.c-mrp,
+.c-rate,
+.c-tax,
+.c-amt {
+  width: 11%;
+  text-align: right;
+}
 
 .section-safe { page-break-inside: avoid; }
 
-.bank { width: 100%; padding: 6px 0; font-size: 10.5px; margin-top: 6px; page-break-inside: avoid; }
-.bank-flex { display: grid; grid-template-columns: 0.7fr 0.95fr; gap: 12px; }
-.bank-left { padding-right: 10px; display: flex; justify-content: space-between; gap: 10px; }
-.qr img { width: 80px; height: 80px; }
+/* CHANGED */
+.bank {
+  width: 100%;
+  padding: 4px 0;
+  font-size: 8.5px;
+  margin-top: 4px;
+  page-break-inside: avoid;
+}
 
-.amount-box { margin-right: 4px; padding-right: 10px; text-align: right; line-height: 1.3; }
+.bank-flex {
+  display: grid;
+  grid-template-columns: 0.7fr 0.95fr;
+  gap: 10px;
+}
+
+.bank-left {
+  padding-right: 10px;
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+/* CHANGED */
+.qr img {
+  width: 55px;
+  height: 55px;
+}
+
+.amount-box {
+  margin-right: 4px;
+  padding-right: 8px;
+  text-align: right;
+  line-height: 1.25;
+}
+
 .amount-row { margin-top: 2px; }
-.amount-row .label { font-weight: 700; margin-right: 4px; }
-.amount-row.total { margin-top: 4px; font-weight: 700; }
 
-.bank-title { font-weight: 700; font-size: 11px; margin-bottom: 3px; text-transform: uppercase; }
+.amount-row .label {
+  font-weight: 700;
+  margin-right: 4px;
+}
+
+.amount-row.total {
+  margin-top: 3px;
+  font-weight: 700;
+}
+
+/* CHANGED */
+.bank-title {
+  font-weight: 700;
+  font-size: 9px;
+  margin-bottom: 2px;
+  text-transform: uppercase;
+}
+
 .bank-row { margin-top: 2px; }
 
-.total-words { margin-top: 6px; font-weight: 700; text-align: right; margin-right: 14px; }
+.total-words {
+  margin-top: 5px;
+  font-weight: 700;
+  text-align: right;
+  margin-right: 10px;
+}
+
 .label {
   font-weight: 700;
+}
+.page {
+  width: 148mm;
+  height: 210mm;
 }
 
 </style>
 </head>
 
 <body>
+<div class="page">
 <div class="container">
 
 <div class="header-row">
@@ -108,17 +265,16 @@ tr { page-break-inside: avoid; }
       </div>
     </div>
   </div>
+
   <div class="invoice-title-right">
   TAX INVOICE : ${safe(invoice.invoiceNumber)}
   
-  <div style="padding-top:20px;">
+  <div style="padding-top:12px;"> <!-- CHANGED -->
   <b>Date:</b> ${invoice.invoiceDate} &nbsp;
   <b>Due:</b> ${invoice.dueDate}
 </div>
   </div>
 </div>
-
-
 
 
 <div class="two-cols">
@@ -131,6 +287,7 @@ tr { page-break-inside: avoid; }
       <b>POS:</b> ${safe(invoice.placeOfSupply)}
     </div>
   </div>
+
   <div class="col">
     <div class="box">
       <b>SHIP TO</b><br/>
@@ -139,6 +296,7 @@ tr { page-break-inside: avoid; }
     </div>
   </div>
 </div>
+
 
 <table class="items">
 <thead>
@@ -157,8 +315,11 @@ ${renderItems()}
 </tbody>
 </table>
 
+
 <div class="bank section-safe">
+
   <div class="bank-flex">
+
     <div class="bank-left">
       <div>
         <div class="bank-title">BANK & PAYMENT DETAILS</div>
@@ -173,14 +334,16 @@ ${renderItems()}
           business.upiId,
         )}</div>
       </div>
+
       ${
         business.qrCode
           ? `<div class="qr"><img src="${business.qrCode}" alt="QR Code" /></div>`
           : ''
       }
+
     </div>
 
- <div class="amount-box">
+<div class="amount-box">
 
 <div class="amount-row">
 Subtotal: ${currency(invoice.subtotal)}
@@ -188,9 +351,9 @@ Subtotal: ${currency(invoice.subtotal)}
 
 ${
   Number(invoice?.discountAmount ?? 0) > 0
-    ? `<div class="amount-row">
-Discount: ${currency(invoice.discountAmount)}
-</div>`
+    ? `<div class="amount-row">Discount: ${currency(
+        invoice.discountAmount,
+      )}</div>`
     : ''
 }
 
@@ -212,19 +375,23 @@ Total: ${currency(invoice.totalAmount)}
 
 ${
   Number(invoice?.receivedAmount ?? 0) > 0
-    ? `<div class="amount-row">
-Received: ${currency(invoice.receivedAmount)}
-</div>`
+    ? `<div class="amount-row">Received: ${currency(
+        invoice.receivedAmount,
+      )}</div>`
     : ''
-}</div>
+}
 
 </div>
 
 </div>
+
+</div>
+
 
 <div class="total-words">
 ${safe(invoice.totalAmountWords)}
 </div>
+
 
 <div class="signature">
 For ${safe(business.name)} <br/><br/>
@@ -232,7 +399,7 @@ Authorized Signatory
 </div>
 
 </div>
-
+</div>
 </body>
 </html>`;
 };

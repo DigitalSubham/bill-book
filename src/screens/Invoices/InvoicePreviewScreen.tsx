@@ -67,12 +67,15 @@ export const InvoicePreviewScreen: React.FC<InvoicePreviewProps> = ({
                 sgst: Number(item.taxAmount) / 2,
                 igst: Number(item.taxAmount)
             })),
+            subtotal: invoice.subtotal,
             total_tax: invoice.cgstTotal + invoice.sgstTotal,
             cgst_total: invoice.cgstTotal,
             sgst_total: invoice.sgstTotal,
             igst_total: invoice.cgstTotal + invoice.sgstTotal,
             total_amount: invoice.totalAmount,
             received_amount: invoice.receivedAmount,
+            discount_amnt: invoice.discountAmount,
+            discount_type: invoice.discountType,
             notes: "Thank You",
         }
         generateInvoice.mutate(payload);
@@ -211,9 +214,21 @@ export const InvoicePreviewScreen: React.FC<InvoicePreviewProps> = ({
                 <Card style={styles.card}>
                     <Card.Content>
                         <View style={styles.totalRow}>
+                            <Text variant="bodyMedium">Sub Total</Text>
+                            <Text variant="bodyMedium">
+                                ₹{invoice.subtotal}
+                            </Text>
+                        </View>
+                        {(invoice?.discountAmount ?? 0) > 0 && (
+                            <View style={styles.totalRow}>
+                                <Text variant="bodyMedium">discount ({invoice.discountType === 'PERCENTAGE' ? '%' : '₹'})</Text>
+                                <Text variant="bodyMedium">₹{Number(invoice?.discountAmount || 0).toFixed(2)}</Text>
+                            </View>
+                        )}
+                        <View style={styles.totalRow}>
                             <Text variant="bodyMedium">Taxable Amount</Text>
                             <Text variant="bodyMedium">
-                                ₹{invoice.taxableAmount || invoice.totalAmount - (invoice.totalTax || 0)}
+                                ₹{Number(invoice.taxableAmount || invoice.totalAmount - (invoice.totalTax || 0)).toFixed(2)}
                             </Text>
                         </View>
                         <View style={styles.totalRow}>
@@ -224,6 +239,7 @@ export const InvoicePreviewScreen: React.FC<InvoicePreviewProps> = ({
                             <Text variant="bodyMedium">SGST</Text>
                             <Text variant="bodyMedium">₹{invoice.sgstTotal}</Text>
                         </View>
+
                         <Divider style={styles.divider} />
                         <View style={styles.totalRow}>
                             <Text variant="titleLarge" style={styles.totalLabel}>

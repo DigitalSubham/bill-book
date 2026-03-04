@@ -19,14 +19,19 @@ export const safe = (v: Nullable<string | number>): string => {
 };
 
 export const format = (v: Nullable<number>): string => {
-  if (typeof v !== 'number' || Number.isNaN(v)) {
-    return '0.00';
-  }
-  return v.toFixed(2);
+  const num = Number(v);
+  if (!Number.isFinite(num)) return '0.00';
+  return num.toFixed(2);
 };
 
 export const currency = (v: Nullable<number> = 0): string => {
-  return `₹${format(v)}`;
+  const num = Number(v);
+  if (!Number.isFinite(num)) return '₹0.00';
+
+  return `₹${num.toLocaleString('en-IN', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`;
 };
 
 export const simpleToCompound = (stock: string, conf: string) => {

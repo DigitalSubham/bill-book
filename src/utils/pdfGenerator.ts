@@ -38,9 +38,10 @@ export const generateInvoicePDF = async (
 
     items: invoice.items,
 
-    taxableAmount:
+    taxableAmount: Number(
       invoice.taxableAmount ||
-      Number(invoice.totalAmount) - Number(invoice.totalTax),
+        Number(invoice.totalAmount) - Number(invoice.totalTax),
+    ).toFixed(2),
     cgstTotal: invoice.cgstTotal,
     sgstTotal: invoice.sgstTotal,
     totalTax:
@@ -49,9 +50,10 @@ export const generateInvoicePDF = async (
         invoice.taxableAmount ||
           Number(invoice.totalAmount) - Number(invoice.totalTax),
       ),
+    subtotal: invoice.subtotal,
     totalAmount: invoice.totalAmount,
     receivedAmount: invoice.receivedAmount,
-
+    discountAmount: Number(invoice?.discountAmount || 0).toFixed(2),
     totalAmountWords: convertAmountToWords(invoice.totalAmount),
   };
 
