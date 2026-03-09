@@ -1,6 +1,10 @@
 import { ScrollView, Alert, View, StyleSheet } from 'react-native';
-import { Button, Divider, DataTable, Card, Text } from 'react-native-paper';
-import { generateInvoicePDF, shareInvoicePDF } from '../../utils/pdfGenerator';
+import { Button, Divider, Card, Text, Portal, Modal } from 'react-native-paper';
+import {
+    generateInvoicePDF,
+    shareInvoicePDF,
+    InvoicePdfFormat,
+} from '../../utils/pdfGenerator';
 import { convertAmountToWords } from '../../utils/calculations';
 import { formTypeEnum, InvoiceBase, InvoiceType } from '../../types';
 import { useState } from 'react';
@@ -33,6 +37,7 @@ export const InvoicePreviewScreen: React.FC<InvoicePreviewProps> = ({
     })
     const [qrBase64, setQrBase64] = useState<string | null>(null);
     const [generating, setGenerating] = useState(false);
+    const [showPdfFormatModal, setShowPdfFormatModal] = useState(false);
     const queryClient = useQueryClient();
     const generateInvoice = useMutation({
         mutationFn: (payload: any) => createInvoices(payload),
@@ -81,23 +86,28 @@ export const InvoicePreviewScreen: React.FC<InvoicePreviewProps> = ({
         generateInvoice.mutate(payload);
     };
 
-    const handleGeneratePDF = async () => {
-        if (!isSaved && formType !== formTypeEnum.EDIT) {
-            Alert.alert(
-                'Save Required',
-                'Please save the invoice before sharing PDF'
-            );
-            return;
-        }
+    const generateAndSharePDF = async (format: InvoicePdfFormat) => {
         try {
             setGenerating(true);
-            const filePath = await generateInvoicePDF(invoice, business, qrBase64);
-            shareInvoicePDF(filePath)
+            const filePath = await generateInvoicePDF(invoice, business, qrBase64, format);
+            await shareInvoicePDF(filePath);
         } catch (error) {
-            Alert.alert('Error', 'Failed to generate PDF');
+            Alert.alert('Error', `Failed to generate ${format} PDF`);
         } finally {
             setGenerating(false);
         }
+    };
+
+    const handleGeneratePDF = async () => {
+        // if (!isSaved && formType !== formTypeEnum.EDIT) {
+        //     Alert.alert(
+        //         'Save Required',
+        //         'Please save the invoice before sharing PDF'
+        //     );
+        //     return;
+        // }
+
+        setShowPdfFormatModal(true);
     };
 
     return (
@@ -179,34 +189,45 @@ export const InvoicePreviewScreen: React.FC<InvoicePreviewProps> = ({
                 {/* Items */}
                 <Card style={styles.card}>
                     <Card.Content>
-                        <DataTable>
-                            <DataTable.Header>
-                                <DataTable.Title>Item</DataTable.Title>
-                                <DataTable.Title numeric>Qty</DataTable.Title>
-                                <DataTable.Title numeric>Rate</DataTable.Title>
-                                <DataTable.Title numeric>Tax</DataTable.Title>
-                                <DataTable.Title numeric>Amount</DataTable.Title>
-                            </DataTable.Header>
+                        <ScrollView
+                            horizontal
+                            showsHorizontalScrollIndicator
+                            contentContainerStyle={styles.itemsTableContainer}
+                        >
+                            <View>
+                                <View style={styles.itemsHeaderRow}>
+                                    <Text style={[styles.colItem, styles.headerText]}>Item</Text>
+                                    <Text style={[styles.colQty, styles.headerText, styles.alignRight]}>Qty</Text>
+                                    <Text style={[styles.colRate, styles.headerText, styles.alignRight]}>Rate</Text>
+                                    <Text style={[styles.colTax, styles.headerText, styles.alignRight]}>Tax</Text>
+                                    <Text style={[styles.colAmount, styles.headerText, styles.alignRight]}>Amount</Text>
+                                </View>
 
-                            {invoice.items.map((item, index) => (
-                                <DataTable.Row key={index}>
-                                    <DataTable.Cell>
-                                        <View>
-                                            <Text variant="bodyMedium">{item.productName}</Text>
+                                {invoice.items.map((item, index) => (
+                                    <View key={index} style={styles.itemRow}>
+                                        <View style={styles.colItem}>
+                                            <Text
+                                                variant="bodyMedium"
+                                                numberOfLines={2}
+                                                ellipsizeMode="tail"
+                                                style={styles.itemName}
+                                            >
+                                                {item.productName}
+                                            </Text>
                                             <Text variant="bodySmall" style={styles.itemSubtext}>
                                                 Tax: {item.taxRate || "0.00"}%
                                             </Text>
                                         </View>
-                                    </DataTable.Cell>
-                                    <DataTable.Cell numeric>{item.quantity}</DataTable.Cell>
-                                    <DataTable.Cell numeric>₹{item.sellingRate}</DataTable.Cell>
-                                    <DataTable.Cell numeric>₹{item.taxAmount}</DataTable.Cell>
-                                    <DataTable.Cell numeric>
-                                        ₹{item?.amount}
-                                    </DataTable.Cell>
-                                </DataTable.Row>
-                            ))}
-                        </DataTable>
+                                        <Text numberOfLines={1} style={[styles.colQty, styles.cellValue, styles.alignRight]}>{item.quantity}</Text>
+                                        <Text numberOfLines={1} ellipsizeMode="clip" style={[styles.colRate, styles.cellValue, styles.alignRight]}>₹{item.sellingRate}</Text>
+                                        <Text numberOfLines={1} ellipsizeMode="clip" style={[styles.colTax, styles.cellValue, styles.alignRight]}>₹{item.taxAmount}</Text>
+                                        <Text numberOfLines={1} ellipsizeMode="clip" style={[styles.colAmount, styles.cellValue, styles.alignRight]}>
+                                            ₹{item?.amount}
+                                        </Text>
+                                    </View>
+                                ))}
+                            </View>
+                        </ScrollView>
                     </Card.Content>
                 </Card>
 
@@ -295,7 +316,7 @@ export const InvoicePreviewScreen: React.FC<InvoicePreviewProps> = ({
                     mode="contained-tonal"
                     onPress={handleGeneratePDF}
                     loading={generating}
-                    disabled={(generating || !isSaved) && formType !== formTypeEnum.EDIT}
+                    // disabled={(generating || !isSaved) && formType !== formTypeEnum.EDIT}
                     icon="file-pdf-box"
                     style={styles.actionButton}>
                     {formType === formTypeEnum.EDIT ? "Share PDF" : isSaved ? "Share PDF" : "Save to Enable PDF"}
@@ -315,6 +336,60 @@ export const InvoicePreviewScreen: React.FC<InvoicePreviewProps> = ({
                     onGenerated={setQrBase64}
                 />
             </View>
+
+            <Portal>
+                <Modal
+                    visible={showPdfFormatModal}
+                    onDismiss={() => setShowPdfFormatModal(false)}
+                    contentContainerStyle={styles.pdfModalContainer}
+                >
+                    <Card style={styles.pdfModalCard}>
+                        <Card.Content>
+                            <Text variant="titleLarge" style={styles.pdfModalTitle}>
+                                Select PDF Format
+                            </Text>
+                            <Text variant="bodyMedium" style={styles.pdfModalSubtitle}>
+                                Choose invoice page size
+                            </Text>
+
+                            <View style={styles.pdfOptions}>
+                                <Button
+                                    mode="contained-tonal"
+                                    icon="file-document-outline"
+                                    style={styles.pdfOptionButton}
+                                    contentStyle={styles.pdfOptionButtonContent}
+                                    onPress={() => {
+                                        setShowPdfFormatModal(false);
+                                        generateAndSharePDF('A4');
+                                    }}
+                                >
+                                    A4 (Standard)
+                                </Button>
+                                <Button
+                                    mode="contained-tonal"
+                                    icon="file-document-outline"
+                                    style={styles.pdfOptionButton}
+                                    contentStyle={styles.pdfOptionButtonContent}
+                                    onPress={() => {
+                                        setShowPdfFormatModal(false);
+                                        generateAndSharePDF('A5');
+                                    }}
+                                >
+                                    A5 (Compact)
+                                </Button>
+                            </View>
+
+                            <Button
+                                mode="text"
+                                onPress={() => setShowPdfFormatModal(false)}
+                                style={styles.pdfCancelButton}
+                            >
+                                Cancel
+                            </Button>
+                        </Card.Content>
+                    </Card>
+                </Modal>
+            </Portal>
         </View>
     );
 };
@@ -369,6 +444,61 @@ const styles = StyleSheet.create({
     },
     itemSubtext: {
         color: '#666',
+        marginTop: 2,
+    },
+    itemsTableContainer: {
+        minWidth: 620,
+    },
+    itemsHeaderRow: {
+        flexDirection: 'row',
+        borderBottomWidth: 1,
+        borderBottomColor: '#e0e0e0',
+        paddingBottom: 8,
+        marginBottom: 6,
+    },
+    itemRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        borderBottomWidth: 1,
+        borderBottomColor: '#f0f0f0',
+        paddingVertical: 8,
+    },
+    headerText: {
+        color: '#666',
+        fontWeight: '600',
+        fontSize: 14,
+    },
+    cellValue: {
+        fontSize: 13,
+        lineHeight: 18,
+        fontVariant: ['tabular-nums'],
+    },
+    itemName: {
+        fontWeight: '500',
+        lineHeight: 20,
+    },
+    alignRight: {
+        textAlign: 'right',
+    },
+    colItem: {
+        width: 240,
+        paddingRight: 10,
+    },
+    colQty: {
+        width: 52,
+        paddingLeft: 6,
+    },
+    colRate: {
+        width: 102,
+        paddingLeft: 8,
+    },
+    colTax: {
+        width: 102,
+        paddingLeft: 8,
+    },
+    colAmount: {
+        width: 112,
+        paddingLeft: 8,
     },
     totalRow: {
         flexDirection: 'row',
@@ -408,6 +538,32 @@ const styles = StyleSheet.create({
     },
     actionButton: {
         flex: 1,
+    },
+    pdfModalContainer: {
+        margin: 20,
+    },
+    pdfModalCard: {
+        borderRadius: 16,
+    },
+    pdfModalTitle: {
+        fontWeight: '700',
+    },
+    pdfModalSubtitle: {
+        color: '#666',
+        marginTop: 4,
+        marginBottom: 16,
+    },
+    pdfOptions: {
+        gap: 10,
+    },
+    pdfOptionButton: {
+        borderRadius: 12,
+    },
+    pdfOptionButtonContent: {
+        height: 48,
+    },
+    pdfCancelButton: {
+        marginTop: 10,
     },
     bottomSpace: {
         height: 20,

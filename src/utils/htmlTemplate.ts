@@ -33,8 +33,8 @@ export const htmlTemplate = (invoice: any = {}, business: any = {}) => {
 
 <style>
 @page { size: A4; margin: 10mm 10mm 12mm 10mm; }
-body { font-family: Arial, Helvetica, sans-serif; font-size: 10.5px; line-height: 1.25; color: #000; margin: 0; padding: 0; }
-.container { padding: 4px; }
+body { font-family: Arial, Helvetica, sans-serif; font-size: 10.5px; line-height: 1.25; color: #000; margin: 0; padding: 0; background: #fff; }
+.container { padding: 4px; background: #fff; min-height: 100vh; }
 
 .company { font-size: 15px; font-weight: 700; text-transform: uppercase; margin: 0; }
 .comp-address { font-size: 10px; line-height: 1.3; margin-top: 2px; }
@@ -54,7 +54,7 @@ body { font-family: Arial, Helvetica, sans-serif; font-size: 10.5px; line-height
 .col { flex: 1; }
 
 table.items { width: 100%; border-collapse: collapse; margin-top: 6px; table-layout: fixed; font-size: 10.5px; }
-table.items th, table.items td { border: 1px solid #000; padding: 3px 4px; }
+table.items th, table.items td { border: 1px solid #000; padding: 3px 4px; background: #fff; }
 table.items th { background: #f2f2f2; font-weight: 700; }
 
 thead { display: table-header-group; }

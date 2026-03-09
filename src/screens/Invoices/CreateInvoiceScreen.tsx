@@ -43,6 +43,9 @@ const CreateInvoiceScreen: React.FC<Props> = ({ navigation }) => {
   const [customer, setCustomer] = useState<CustomerType | null>(null);
 
   const [items, setItems] = useState<InvoiceItem[]>([]);
+  const [quantityDrafts, setQuantityDrafts] = useState<Record<string, string>>(
+    {},
+  );
   const [showDatePicker, setShowDatePicker] = useState<boolean>(false);
   const [datePickerType, setDatePickerType] =
     useState<DatePickerType>('invoice');
@@ -138,6 +141,42 @@ const CreateInvoiceScreen: React.FC<Props> = ({ navigation }) => {
 
   const removeItem = (productId: string) => {
     setItems(items.filter(item => item.productId !== productId));
+  };
+
+  const handleQuantityTextChange = (productId: string, text: string) => {
+    if (!/^\d*$/.test(text)) {
+      return;
+    }
+
+    setQuantityDrafts(prev => ({ ...prev, [productId]: text }));
+    if (!text) {
+      return;
+    }
+
+    const qty = Number.parseInt(text, 10);
+    if (!Number.isNaN(qty) && qty > 0) {
+      updateQuantity(productId, qty);
+    }
+  };
+
+  const handleQuantityBlur = (productId: string, currentQty: number) => {
+    const draft = quantityDrafts[productId];
+    if (draft === undefined) {
+      return;
+    }
+
+    const qty = Number.parseInt(draft, 10);
+    if (!draft || Number.isNaN(qty) || qty <= 0) {
+      updateQuantity(productId, currentQty);
+    } else {
+      updateQuantity(productId, qty);
+    }
+
+    setQuantityDrafts(prev => {
+      const next = { ...prev };
+      delete next[productId];
+      return next;
+    });
   };
 
 
@@ -248,7 +287,7 @@ const CreateInvoiceScreen: React.FC<Props> = ({ navigation }) => {
           <Card.Content>
             <View style={styles.itemsHeader}>
               <Text variant="titleMedium" style={styles.sectionTitle}>
-                Items
+                Items ({items.length})
               </Text>
               <Button
                 mode="contained-tonal"
@@ -263,39 +302,75 @@ const CreateInvoiceScreen: React.FC<Props> = ({ navigation }) => {
               <View key={item.productId}>
                 <View style={styles.itemRow}>
                   <View style={styles.itemInfo}>
-                    <Text variant="bodyLarge">{item.productName}</Text>
+                    <Text variant="bodyLarge" numberOfLines={2} ellipsizeMode="tail">
+                      {item.productName}
+                    </Text>
                     <Text variant="bodySmall" style={styles.itemDetails}>
                       Rate: ₹{item.sellingRate} | Tax: {item.taxRate}%
                     </Text>
                   </View>
-                  <View style={styles.itemActions}>
-                    <IconButton
-                      icon="minus"
-                      size={20}
-                      onPress={() =>
-                        updateQuantity(item.productId, item.quantity - 1)
-                      }
-                    />
-                    <Text variant="bodyLarge" style={styles.quantity}>
-                      {item.quantity}
-                    </Text>
-                    <IconButton
-                      icon="plus"
-                      size={20}
-                      onPress={() =>
-                        updateQuantity(item.productId, item.quantity + 1)
-                      }
-                    />
-                    <Text variant="bodyLarge" style={styles.amount}>
-                      ₹{item.amount?.toFixed(2)}
-                    </Text>
+
+                  <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={styles.itemActions}
+                  >
+                    <View style={styles.qtyControl}>
+                      <IconButton
+                        icon="minus"
+                        size={18}
+                        onPress={() =>
+                          updateQuantity(item.productId, item.quantity - 1)
+                        }
+                      />
+                      <TextInput
+                        mode="outlined"
+                        dense
+                        keyboardType="number-pad"
+                        value={
+                          quantityDrafts[item.productId] ??
+                          String(item.quantity)
+                        }
+                        onChangeText={text =>
+                          handleQuantityTextChange(item.productId, text)
+                        }
+                        onBlur={() =>
+                          handleQuantityBlur(item.productId, item.quantity)
+                        }
+                        style={styles.quantityInput}
+                        contentStyle={styles.quantityInputContent}
+                      />
+                      <IconButton
+                        icon="plus"
+                        size={18}
+                        onPress={() =>
+                          updateQuantity(item.productId, item.quantity + 1)
+                        }
+                      />
+                    </View>
+
+                    <View style={styles.metaCell}>
+                      <Text style={styles.metaLabel}>Rate</Text>
+                      <Text style={styles.metaValue}>₹{item.sellingRate}</Text>
+                    </View>
+
+                    <View style={styles.metaCell}>
+                      <Text style={styles.metaLabel}>Tax</Text>
+                      <Text style={styles.metaValue}>₹{item.taxAmount}</Text>
+                    </View>
+
+                    <View style={styles.metaCell}>
+                      <Text style={styles.metaLabel}>Amount</Text>
+                      <Text style={styles.metaValue}>₹{item.amount?.toFixed(2)}</Text>
+                    </View>
+
                     <IconButton
                       icon="delete"
                       iconColor="#d32f2f"
                       size={20}
                       onPress={() => removeItem(item.productId)}
                     />
-                  </View>
+                  </ScrollView>
                 </View>
                 {index < items.length - 1 && <Divider />}
               </View>
@@ -525,13 +600,11 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   itemRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    gap: 8,
     paddingVertical: 8,
   },
   itemInfo: {
-    flex: 1,
+    marginBottom: 4,
   },
   itemDetails: {
     color: '#666',
@@ -540,10 +613,50 @@ const styles = StyleSheet.create({
   itemActions: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 8,
+    minWidth: 520,
+    paddingRight: 4,
+  },
+  qtyControl: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+    borderRadius: 10,
+    paddingHorizontal: 2,
+    backgroundColor: '#fafafa',
+  },
+  metaCell: {
+    minWidth: 100,
+    borderWidth: 1,
+    borderColor: '#ececec',
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    backgroundColor: '#fafafa',
+  },
+  metaLabel: {
+    color: '#666',
+    fontSize: 11,
+  },
+  metaValue: {
+    fontSize: 15,
+    fontWeight: '600',
   },
   quantity: {
-    minWidth: 30,
+    minWidth: 24,
     textAlign: 'center',
+  },
+  quantityInput: {
+    width: 64,
+    height: 36,
+    marginHorizontal: 2,
+    backgroundColor: '#fff',
+  },
+  quantityInputContent: {
+    textAlign: 'center',
+    fontSize: 16,
+    fontWeight: '600',
   },
   amount: {
     minWidth: 80,

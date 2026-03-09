@@ -2,13 +2,17 @@ import * as RNHTMLtoPDF from 'react-native-html-to-pdf';
 import Share from 'react-native-share';
 import { Platform } from 'react-native';
 import { htmlTemplate } from './htmlTemplate';
+import { A5htmlTemplate } from './a5';
 import { convertAmountToWords } from './calculations';
 import { formatDate } from './helper';
+
+export type InvoicePdfFormat = 'A4' | 'A5';
 
 export const generateInvoicePDF = async (
   invoice: any,
   business: any,
   qrcode: any,
+  format: InvoicePdfFormat = 'A4',
 ) => {
   const busi = {
     name: business.name,
@@ -58,10 +62,19 @@ export const generateInvoicePDF = async (
   };
 
   try {
+    const selectedTemplate =
+      format === 'A5' ? A5htmlTemplate(inv, busi) : htmlTemplate(inv, busi);
+    const now = Date.now();
+    const pageSize =
+      format === 'A5'
+        ? { width: 420, height: 595 } // A5 at 72 DPI
+        : { width: 595, height: 842 }; // A4 at 72 DPI
+
     const file = await RNHTMLtoPDF.generatePDF({
-      html: htmlTemplate(inv, busi),
-      fileName: `Invoice_${invoice.invoiceNumber || 1}`,
+      html: selectedTemplate,
+      fileName: `Invoice_${invoice.invoiceNumber || 1}_${format}_${now}`,
       base64: true,
+      ...pageSize,
     });
     return file.filePath;
   } catch (error) {
