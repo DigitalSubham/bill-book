@@ -99,13 +99,13 @@ export const InvoicePreviewScreen: React.FC<InvoicePreviewProps> = ({
     };
 
     const handleGeneratePDF = async () => {
-        // if (!isSaved && formType !== formTypeEnum.EDIT) {
-        //     Alert.alert(
-        //         'Save Required',
-        //         'Please save the invoice before sharing PDF'
-        //     );
-        //     return;
-        // }
+        if (!isSaved && formType !== formTypeEnum.EDIT) {
+            Alert.alert(
+                'Save Required',
+                'Please save the invoice before sharing PDF'
+            );
+            return;
+        }
 
         setShowPdfFormatModal(true);
     };
@@ -316,7 +316,7 @@ export const InvoicePreviewScreen: React.FC<InvoicePreviewProps> = ({
                     mode="contained-tonal"
                     onPress={handleGeneratePDF}
                     loading={generating}
-                    // disabled={(generating || !isSaved) && formType !== formTypeEnum.EDIT}
+                    disabled={(generating || !isSaved) && formType !== formTypeEnum.EDIT}
                     icon="file-pdf-box"
                     style={styles.actionButton}>
                     {formType === formTypeEnum.EDIT ? "Share PDF" : isSaved ? "Share PDF" : "Save to Enable PDF"}

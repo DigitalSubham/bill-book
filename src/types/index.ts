@@ -104,6 +104,12 @@ export interface InvoiceItem {
   taxRate: string;
   taxAmount: number;
   amount: number;
+  unitType?: 'SIMPLE' | 'COMPOUND';
+  unit?: string;
+  baseUnit?: string;
+  conversionFactor?: string;
+  stockInBase?: string;
+  qtyInputUnit?: 'COMPOUND' | 'BASE';
 }
 
 export interface InvoiceBase {

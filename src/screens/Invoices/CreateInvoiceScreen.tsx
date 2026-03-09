@@ -61,7 +61,11 @@ const CreateInvoiceScreen: React.FC<Props> = ({ navigation }) => {
     discountType: 'FIXED-AMOUNT',
   });
 
-  const { data: customers = [] } = useQuery<CustomerType[]>({
+  const {
+    data: customers = [],
+    isLoading: isCustomersLoading,
+    isFetching: isCustomersFetching,
+  } = useQuery<CustomerType[]>({
     queryKey: ['customers'],
     queryFn: fetchCustomer,
     staleTime: 5 * 60 * 1000,
@@ -92,20 +96,34 @@ const CreateInvoiceScreen: React.FC<Props> = ({ navigation }) => {
 
   const addProduct = (product: ProductType) => {
     const existingItem = items.find(item => item.productId === product.id);
+    const initialBaseQty = 1;
+    const maxAllowedForNewItem = Math.floor(Number.parseFloat(product.stock || '0') || 0);
+
+    if (maxAllowedForNewItem < initialBaseQty) {
+      Alert.alert('Out of stock', `${product.name} is out of stock`);
+      return;
+    }
 
     if (existingItem) {
-      updateQuantity(existingItem.productId, existingItem.quantity + 1);
+      const currentInputQty = getInputQuantity(existingItem);
+      updateQuantity(existingItem.productId, currentInputQty + 1);
     } else {
-      const calc = calculateItemAmount(1, product.rate, product.taxRate);
-      const newItem = {
+      const calc = calculateItemAmount(initialBaseQty, product.rate, product.taxRate);
+      const newItem: InvoiceItem = {
         productId: product?.id,
         productName: product.name,
-        quantity: 1,
+        quantity: initialBaseQty,
         mrp: product.mrp,
         sellingRate: product.rate,
         taxRate: product.taxRate,
         taxAmount: calc.taxAmount,
         amount: calc.totalAmount,
+        unitType: product.unitType,
+        unit: product.unit,
+        baseUnit: product.baseUnit,
+        conversionFactor: product.conversionFactor,
+        stockInBase: product.stock,
+        qtyInputUnit: 'BASE',
       };
       setItems([...items, newItem]);
     }
@@ -113,8 +131,68 @@ const CreateInvoiceScreen: React.FC<Props> = ({ navigation }) => {
     setSearchQuery('');
   };
 
-  const updateQuantity = (productId: string, newQuantity: number) => {
-    if (newQuantity <= 0) {
+  const getMaxAllowedQuantityInBase = (item: InvoiceItem) => {
+    const parsedStock = Number.parseFloat(item.stockInBase || '');
+    if (Number.isNaN(parsedStock)) {
+      return Number.MAX_SAFE_INTEGER;
+    }
+
+    const stockInBase = parsedStock;
+    const conversionFactor = Number.parseFloat(item.conversionFactor || '1') || 1;
+
+    return Math.floor(stockInBase);
+  };
+
+  const getQuantityUnitLabel = (item: InvoiceItem) => {
+    if (item.unitType === 'COMPOUND' && item.qtyInputUnit === 'COMPOUND') {
+      return item.unit || 'Unit';
+    }
+    return item.baseUnit || item.unit || 'Unit';
+  };
+
+  const toBaseQuantity = (item: InvoiceItem, inputQuantity: number) => {
+    const conversionFactor = Number.parseFloat(item.conversionFactor || '1') || 1;
+    if (item.unitType === 'COMPOUND' && item.qtyInputUnit === 'COMPOUND') {
+      return inputQuantity * conversionFactor;
+    }
+    return inputQuantity;
+  };
+
+  const getInputQuantity = (item: InvoiceItem) => {
+    const conversionFactor = Number.parseFloat(item.conversionFactor || '1') || 1;
+    if (item.unitType === 'COMPOUND' && item.qtyInputUnit === 'COMPOUND') {
+      return Number((item.quantity / conversionFactor).toFixed(2));
+    }
+    return item.quantity;
+  };
+
+  const getMaxAllowedInputQuantity = (item: InvoiceItem) => {
+    const maxBase = getMaxAllowedQuantityInBase(item);
+    const conversionFactor = Number.parseFloat(item.conversionFactor || '1') || 1;
+
+    if (item.unitType === 'COMPOUND' && item.qtyInputUnit === 'COMPOUND') {
+      return Math.floor(maxBase / conversionFactor);
+    }
+    return maxBase;
+  };
+
+  const getQuantityHint = (item: InvoiceItem) => {
+    if (item.unitType !== 'COMPOUND') {
+      return '';
+    }
+
+    const conversionFactor = Number.parseFloat(item.conversionFactor || '1') || 1;
+    const unitLabel = item.unit || 'Unit';
+    const baseUnitLabel = item.baseUnit || 'Base Unit';
+    return `1 ${unitLabel} = ${conversionFactor} ${baseUnitLabel}`;
+  };
+
+  const updateQuantity = (
+    productId: string,
+    inputQuantity: number,
+    showStockAlert: boolean = true,
+  ) => {
+    if (inputQuantity <= 0) {
       removeItem(productId);
       return;
     }
@@ -122,14 +200,32 @@ const CreateInvoiceScreen: React.FC<Props> = ({ navigation }) => {
     setItems(
       items.map(item => {
         if (item.productId === productId) {
+          const maxAllowed = getMaxAllowedInputQuantity(item);
+          const sanitizedInputQuantity = Math.min(inputQuantity, maxAllowed || 0);
+          const sanitizedBaseQuantity = toBaseQuantity(item, sanitizedInputQuantity);
+
+          if (sanitizedInputQuantity <= 0 || sanitizedBaseQuantity <= 0) {
+            if (showStockAlert) {
+              Alert.alert('Out of stock', `${item.productName} is out of stock`);
+            }
+            return item;
+          }
+
+          if (showStockAlert && sanitizedInputQuantity < inputQuantity) {
+            Alert.alert(
+              'Stock limit',
+              `Only ${maxAllowed} ${getQuantityUnitLabel(item)} available`,
+            );
+          }
+
           const calc = calculateItemAmount(
-            newQuantity,
+            sanitizedBaseQuantity,
             item.sellingRate,
             item.taxRate,
           );
           return {
             ...item,
-            quantity: newQuantity,
+            quantity: sanitizedBaseQuantity,
             taxAmount: calc.taxAmount,
             amount: calc.totalAmount,
           };
@@ -143,8 +239,27 @@ const CreateInvoiceScreen: React.FC<Props> = ({ navigation }) => {
     setItems(items.filter(item => item.productId !== productId));
   };
 
+  const updateItemQuantityUnit = (
+    productId: string,
+    qtyInputUnit: 'COMPOUND' | 'BASE',
+  ) => {
+    setItems(prev =>
+      prev.map(item => {
+        if (item.productId !== productId) {
+          return item;
+        }
+        return { ...item, qtyInputUnit };
+      }),
+    );
+    setQuantityDrafts(prev => {
+      const next = { ...prev };
+      delete next[productId];
+      return next;
+    });
+  };
+
   const handleQuantityTextChange = (productId: string, text: string) => {
-    if (!/^\d*$/.test(text)) {
+    if (!/^\d*\.?\d*$/.test(text)) {
       return;
     }
 
@@ -153,9 +268,9 @@ const CreateInvoiceScreen: React.FC<Props> = ({ navigation }) => {
       return;
     }
 
-    const qty = Number.parseInt(text, 10);
+    const qty = Number.parseFloat(text);
     if (!Number.isNaN(qty) && qty > 0) {
-      updateQuantity(productId, qty);
+      updateQuantity(productId, qty, false);
     }
   };
 
@@ -165,9 +280,9 @@ const CreateInvoiceScreen: React.FC<Props> = ({ navigation }) => {
       return;
     }
 
-    const qty = Number.parseInt(draft, 10);
+    const qty = Number.parseFloat(draft);
     if (!draft || Number.isNaN(qty) || qty <= 0) {
-      updateQuantity(productId, currentQty);
+      updateQuantity(productId, currentQty, false);
     } else {
       updateQuantity(productId, qty);
     }
@@ -241,8 +356,12 @@ const CreateInvoiceScreen: React.FC<Props> = ({ navigation }) => {
                 mode="outlined"
                 onPress={() => setShowCustomerModal(true)}
                 icon="account-plus"
+                loading={isCustomersLoading || isCustomersFetching}
+                disabled={isCustomersLoading || isCustomersFetching}
               >
-                Select Customer
+                {isCustomersLoading || isCustomersFetching
+                  ? 'Loading Customers...'
+                  : 'Select Customer'}
               </Button>
             )}
           </Card.Content>
@@ -302,12 +421,61 @@ const CreateInvoiceScreen: React.FC<Props> = ({ navigation }) => {
               <View key={item.productId}>
                 <View style={styles.itemRow}>
                   <View style={styles.itemInfo}>
-                    <Text variant="bodyLarge" numberOfLines={2} ellipsizeMode="tail">
-                      {item.productName}
-                    </Text>
+                    <View style={styles.itemTopRow}>
+                      <Text
+                        variant="bodyLarge"
+                        numberOfLines={1}
+                        ellipsizeMode="tail"
+                        style={styles.itemName}
+                      >
+                        {item.productName}
+                      </Text>
+                      {item.unitType === 'COMPOUND' && (
+                        <View style={styles.unitSwitchRow}>
+                          <TouchableOpacity
+                            onPress={() => updateItemQuantityUnit(item.productId, 'COMPOUND')}
+                            style={[
+                              styles.unitOption,
+                              item.qtyInputUnit === 'COMPOUND' && styles.unitOptionSelected,
+                            ]}
+                          >
+                            <View style={styles.unitCheckbox}>
+                              <Checkbox
+                                status={item.qtyInputUnit === 'COMPOUND' ? 'checked' : 'unchecked'}
+                                onPress={() => updateItemQuantityUnit(item.productId, 'COMPOUND')}
+                              />
+                            </View>
+                            <Text style={styles.unitOptionText}>{item.unit || 'Unit'}</Text>
+                          </TouchableOpacity>
+                          <TouchableOpacity
+                            onPress={() => updateItemQuantityUnit(item.productId, 'BASE')}
+                            style={[
+                              styles.unitOption,
+                              item.qtyInputUnit === 'BASE' && styles.unitOptionSelected,
+                            ]}
+                          >
+                            <View style={styles.unitCheckbox}>
+                              <Checkbox
+                                status={item.qtyInputUnit === 'BASE' ? 'checked' : 'unchecked'}
+                                onPress={() => updateItemQuantityUnit(item.productId, 'BASE')}
+                              />
+                            </View>
+                            <Text style={styles.unitOptionText}>{item.baseUnit || 'Base'}</Text>
+                          </TouchableOpacity>
+                        </View>
+                      )}
+                    </View>
                     <Text variant="bodySmall" style={styles.itemDetails}>
                       Rate: ₹{item.sellingRate} | Tax: {item.taxRate}%
                     </Text>
+                    <Text variant="bodySmall" style={styles.itemStockText}>
+                      Available: {getMaxAllowedInputQuantity(item)} {getQuantityUnitLabel(item)}
+                    </Text>
+                    {!!getQuantityHint(item) && (
+                      <Text variant="bodySmall" style={styles.itemConversionText}>
+                        {getQuantityHint(item)}
+                      </Text>
+                    )}
                   </View>
 
                   <ScrollView
@@ -329,7 +497,7 @@ const CreateInvoiceScreen: React.FC<Props> = ({ navigation }) => {
                         keyboardType="number-pad"
                         value={
                           quantityDrafts[item.productId] ??
-                          String(item.quantity)
+                          String(getInputQuantity(item))
                         }
                         onChangeText={text =>
                           handleQuantityTextChange(item.productId, text)
@@ -386,30 +554,63 @@ const CreateInvoiceScreen: React.FC<Props> = ({ navigation }) => {
 
         <Card style={styles.card}>
           <Card.Content>
-            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-              <Text variant="titleMedium" style={{ fontWeight: 'bold' }}>
+            <View style={styles.discountHeader}>
+              <Text variant="titleMedium" style={styles.discountTitle}>
                 Discount
               </Text>
+              <View style={styles.discountTypeRow}>
+                <TouchableOpacity
+                  style={[
+                    styles.discountTypePill,
+                    form.discountType === 'PERCENTAGE' && styles.discountTypePillActive,
+                  ]}
+                  onPress={() => setForm({ ...form, discountType: 'PERCENTAGE' })}
+                >
+                  <Text
+                    style={[
+                      styles.discountTypeText,
+                      form.discountType === 'PERCENTAGE' && styles.discountTypeTextActive,
+                    ]}
+                  >
+                    %
+                  </Text>
+                </TouchableOpacity>
 
-              <Checkbox.Item
-                label="%"
-                status={form.discountType === 'PERCENTAGE' ? 'checked' : 'unchecked'}
-                onPress={() => setForm({ ...form, discountType: 'PERCENTAGE' })}
-              />
-              <Checkbox.Item
-                label="₹"
-                status={form.discountType === 'FIXED-AMOUNT' ? 'checked' : 'unchecked'}
-                onPress={() => setForm({ ...form, discountType: 'FIXED-AMOUNT' })}
-              />
+                <TouchableOpacity
+                  style={[
+                    styles.discountTypePill,
+                    form.discountType === 'FIXED-AMOUNT' && styles.discountTypePillActive,
+                  ]}
+                  onPress={() => setForm({ ...form, discountType: 'FIXED-AMOUNT' })}
+                >
+                  <Text
+                    style={[
+                      styles.discountTypeText,
+                      form.discountType === 'FIXED-AMOUNT' && styles.discountTypeTextActive,
+                    ]}
+                  >
+                    ₹
+                  </Text>
+                </TouchableOpacity>
+              </View>
             </View>
 
             <TextInput
-              label={`Discount (${form.discountType === 'PERCENTAGE' ? '%' : '₹'})`}
+              label={
+                form.discountType === 'PERCENTAGE'
+                  ? 'Discount Percentage'
+                  : 'Discount Amount'
+              }
               value={form.discount}
               onChangeText={(text) => { setForm({ ...form, discount: text }) }}
               keyboardType="numeric"
               mode="outlined"
-              style={styles.receivedInput}
+              style={styles.discountInput}
+              right={
+                <TextInput.Affix
+                  text={form.discountType === 'PERCENTAGE' ? '%' : '₹'}
+                />
+              }
             />
           </Card.Content>
         </Card>
@@ -604,11 +805,64 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   itemInfo: {
-    marginBottom: 4,
+    marginBottom: 2,
+  },
+  itemTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 6,
+  },
+  itemName: {
+    flex: 1,
+    paddingTop: 0,
+    lineHeight: 20,
   },
   itemDetails: {
     color: '#666',
-    marginTop: 2,
+    marginTop: 1,
+  },
+  itemStockText: {
+    color: '#666',
+    marginTop: 1,
+  },
+  itemConversionText: {
+    color: '#777',
+    marginTop: 1,
+    fontStyle: 'italic',
+  },
+  unitSwitchRow: {
+    flexDirection: 'row',
+    gap: 4,
+    marginTop: 0,
+    flexShrink: 0,
+    height: 24,
+    alignItems: 'center',
+  },
+  unitOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 8,
+    minWidth: 72,
+    borderWidth: 1,
+    borderColor: '#ddd',
+    backgroundColor: '#fff',
+    paddingRight: 6,
+    height: 24,
+  },
+  unitOptionSelected: {
+    borderColor: '#7b61ff',
+    backgroundColor: '#f3efff',
+  },
+  unitOptionText: {
+    fontSize: 11,
+    lineHeight: 14,
+    color: '#333',
+    marginLeft: 4,
+  },
+  unitCheckbox: {
+    margin: -6,
+    transform: [{ scale: 0.72 }],
   },
   itemActions: {
     flexDirection: 'row',
@@ -661,6 +915,44 @@ const styles = StyleSheet.create({
   amount: {
     minWidth: 80,
     textAlign: 'right',
+  },
+  discountHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  discountTitle: {
+    fontWeight: 'bold',
+  },
+  discountTypeRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  discountTypePill: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    borderWidth: 1,
+    borderColor: '#d7d7d7',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#fff',
+  },
+  discountTypePillActive: {
+    backgroundColor: '#ece5ff',
+    borderColor: '#7b61ff',
+  },
+  discountTypeText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#666',
+  },
+  discountTypeTextActive: {
+    color: '#5b3fd1',
+  },
+  discountInput: {
+    marginTop: 4,
   },
   emptyText: {
     textAlign: 'center',
