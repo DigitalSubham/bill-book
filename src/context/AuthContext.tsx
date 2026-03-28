@@ -23,7 +23,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   useEffect(() => {
     const loadStoredToken = async () => {
       try {
-        const storedToken = await getToken();
+        const [storedToken] = await Promise.all([
+          getToken(),
+          new Promise<void>(resolve => setTimeout(resolve, 2000)),
+        ]);
         setToken(storedToken);
       } finally {
         setLoading(false);
