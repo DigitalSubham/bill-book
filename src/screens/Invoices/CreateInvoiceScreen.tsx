@@ -3,6 +3,7 @@ import {
   View,
   StyleSheet,
   ScrollView,
+  FlatList,
   Alert,
   TouchableOpacity,
 } from 'react-native';
@@ -26,10 +27,12 @@ import {
 } from '../../utils/calculations';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { CustomerType, DatePickerType, formTypeEnum, InvoiceBase, InvoiceForm, InvoiceItem, ProductType, RootStackParamList } from '../../types';
-import { useQuery } from '@tanstack/react-query';
-import { fetchProducts } from '../../apis/productApis';
-import { fetchCustomer } from '../../apis/customerApis';
+import { fetchProductsPage } from '../../apis/productApis';
+import { fetchCustomersPage } from '../../apis/customerApis';
 import { simpleToCompound } from '../../utils/helper';
+import { usePaginatedListQuery } from '../../hooks/usePaginatedListQuery';
+import PaginationFooter from '../../components/common/PaginationFooter';
+import { useDebouncedValue } from '../../hooks/useDebouncedValue';
 
 type AddCustomerScreenNavigationProp = NativeStackNavigationProp<
   RootStackParamList
@@ -52,7 +55,10 @@ const CreateInvoiceScreen: React.FC<Props> = ({ navigation }) => {
 
   const [showCustomerModal, setShowCustomerModal] = useState<boolean>(false);
   const [showProductModal, setShowProductModal] = useState<boolean>(false);
-  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [customerSearchQuery, setCustomerSearchQuery] = useState<string>('');
+  const [productSearchQuery, setProductSearchQuery] = useState<string>('');
+  const debouncedCustomerSearchQuery = useDebouncedValue(customerSearchQuery, 350);
+  const debouncedProductSearchQuery = useDebouncedValue(productSearchQuery, 350);
   const [form, setForm] = useState<InvoiceForm>({
     recievedAmount: '0',
     invoiceDate: new Date(),
@@ -62,36 +68,147 @@ const CreateInvoiceScreen: React.FC<Props> = ({ navigation }) => {
   });
 
   const {
-    data: customers = [],
+    items: customers,
     isLoading: isCustomersLoading,
-    isFetching: isCustomersFetching,
-  } = useQuery<CustomerType[]>({
-    queryKey: ['customers'],
-    queryFn: fetchCustomer,
+    isFetchingNextPage: isFetchingMoreCustomers,
+    hasNextPage: hasMoreCustomers,
+    fetchNextPage: fetchMoreCustomers,
+  } = usePaginatedListQuery<CustomerType>({
+    queryKey: ['invoice-customers'],
+    queryFn: fetchCustomersPage,
     staleTime: 5 * 60 * 1000,
   });
 
-  const { data: products = [] } = useQuery<ProductType[]>({
-    queryKey: ['products'],
-    queryFn: fetchProducts,
+  const {
+    items: products,
+    isLoading: isProductsLoading,
+    isFetchingNextPage: isFetchingMoreProducts,
+    hasNextPage: hasMoreProducts,
+    fetchNextPage: fetchMoreProducts,
+  } = usePaginatedListQuery<ProductType>({
+    queryKey: ['invoice-products'],
+    queryFn: fetchProductsPage,
     staleTime: 5 * 60 * 1000,
   });
+
+  const trimmedCustomerSearch = customerSearchQuery.trim();
+  const trimmedProductSearch = productSearchQuery.trim();
+  const debouncedTrimmedCustomerSearch = debouncedCustomerSearchQuery.trim();
+  const debouncedTrimmedProductSearch = debouncedProductSearchQuery.trim();
 
   const filteredCustomers = customers.filter(
     (c: CustomerType) =>
-      c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      c.mobile.includes(searchQuery),
+      c.name.toLowerCase().includes(trimmedCustomerSearch.toLowerCase()) ||
+      c.mobile.includes(trimmedCustomerSearch),
   );
 
   const filteredProducts = products.filter((p: ProductType) =>
-    p.name.toLowerCase().includes(searchQuery.toLowerCase()),
+    p.name.toLowerCase().includes(trimmedProductSearch.toLowerCase()),
   );
+
+  const shouldUseCustomerApiSearch =
+    debouncedTrimmedCustomerSearch.length > 0 && filteredCustomers.length === 0;
+  const shouldUseProductApiSearch =
+    debouncedTrimmedProductSearch.length > 0 && filteredProducts.length === 0;
+
+  const {
+    items: searchedCustomers,
+    isLoading: isCustomerSearchLoading,
+    isFetchingNextPage: isFetchingMoreSearchedCustomers,
+    hasNextPage: hasMoreSearchedCustomers,
+    fetchNextPage: fetchMoreSearchedCustomers,
+  } = usePaginatedListQuery<CustomerType>({
+    queryKey: ['invoice-customers-search', debouncedTrimmedCustomerSearch],
+    queryFn: params =>
+      fetchCustomersPage({
+        ...params,
+        search: debouncedTrimmedCustomerSearch,
+      }),
+    staleTime: 30 * 1000,
+    enabled: showCustomerModal && shouldUseCustomerApiSearch,
+  });
+
+  const {
+    items: searchedProducts,
+    isLoading: isProductSearchLoading,
+    isFetchingNextPage: isFetchingMoreSearchedProducts,
+    hasNextPage: hasMoreSearchedProducts,
+    fetchNextPage: fetchMoreSearchedProducts,
+  } = usePaginatedListQuery<ProductType>({
+    queryKey: ['invoice-products-search', debouncedTrimmedProductSearch],
+    queryFn: params =>
+      fetchProductsPage({
+        ...params,
+        search: debouncedTrimmedProductSearch,
+      }),
+    staleTime: 30 * 1000,
+    enabled: showProductModal && shouldUseProductApiSearch,
+  });
+
+  const visibleCustomers =
+    trimmedCustomerSearch.length === 0
+      ? customers
+      : shouldUseCustomerApiSearch
+        ? searchedCustomers
+        : filteredCustomers;
+
+  const visibleProducts =
+    trimmedProductSearch.length === 0
+      ? products
+      : shouldUseProductApiSearch
+        ? searchedProducts
+        : filteredProducts;
+
+  const isCustomerListLoading =
+    isCustomersLoading || (shouldUseCustomerApiSearch && isCustomerSearchLoading);
+  const isProductListLoading =
+    isProductsLoading || (shouldUseProductApiSearch && isProductSearchLoading);
+
+  const handleCustomerEndReached = () => {
+    if (trimmedCustomerSearch.length > 0) {
+      if (shouldUseCustomerApiSearch && hasMoreSearchedCustomers && !isFetchingMoreSearchedCustomers) {
+        fetchMoreSearchedCustomers();
+      }
+      return;
+    }
+
+    if (shouldUseCustomerApiSearch) {
+      if (hasMoreSearchedCustomers && !isFetchingMoreSearchedCustomers) {
+        fetchMoreSearchedCustomers();
+      }
+      return;
+    }
+
+    if (hasMoreCustomers && !isFetchingMoreCustomers) {
+      fetchMoreCustomers();
+    }
+  };
+
+  const handleProductEndReached = () => {
+    if (trimmedProductSearch.length > 0) {
+      if (shouldUseProductApiSearch && hasMoreSearchedProducts && !isFetchingMoreSearchedProducts) {
+        fetchMoreSearchedProducts();
+      }
+      return;
+    }
+
+    if (shouldUseProductApiSearch) {
+      if (hasMoreSearchedProducts && !isFetchingMoreSearchedProducts) {
+        fetchMoreSearchedProducts();
+      }
+      return;
+    }
+
+    if (hasMoreProducts && !isFetchingMoreProducts) {
+      fetchMoreProducts();
+    }
+  };
 
 
   const selectCustomer = (selectedCustomer: CustomerType) => {
     setCustomer(selectedCustomer)
     setShowCustomerModal(false);
-    setSearchQuery('');
+    setCustomerSearchQuery('');
   };
 
   const addProduct = (product: ProductType) => {
@@ -128,7 +245,7 @@ const CreateInvoiceScreen: React.FC<Props> = ({ navigation }) => {
       setItems([...items, newItem]);
     }
     setShowProductModal(false);
-    setSearchQuery('');
+    setProductSearchQuery('');
   };
 
   const getMaxAllowedQuantityInBase = (item: InvoiceItem) => {
@@ -356,10 +473,10 @@ const CreateInvoiceScreen: React.FC<Props> = ({ navigation }) => {
                 mode="outlined"
                 onPress={() => setShowCustomerModal(true)}
                 icon="account-plus"
-                loading={isCustomersLoading || isCustomersFetching}
-                disabled={isCustomersLoading || isCustomersFetching}
+                loading={isCustomersLoading}
+                disabled={isCustomersLoading}
               >
-                {isCustomersLoading || isCustomersFetching
+                {isCustomersLoading
                   ? 'Loading Customers...'
                   : 'Select Customer'}
               </Button>
@@ -679,27 +796,49 @@ const CreateInvoiceScreen: React.FC<Props> = ({ navigation }) => {
           visible={showCustomerModal}
           onDismiss={() => {
             setShowCustomerModal(false);
-            setSearchQuery('');
+            setCustomerSearchQuery('');
           }}
           contentContainerStyle={styles.modal}
         >
           <Searchbar
             placeholder="Search customers"
-            onChangeText={setSearchQuery}
-            value={searchQuery}
+            onChangeText={setCustomerSearchQuery}
+            value={customerSearchQuery}
             style={styles.searchbar}
           />
-          <ScrollView style={styles.modalScroll}>
-            {filteredCustomers.map(c => (
+          <FlatList
+            data={visibleCustomers}
+            keyExtractor={(item, index) => item.id || `customer-${index}`}
+            style={styles.modalScroll}
+            renderItem={({ item }) => (
               <List.Item
-                key={c.id}
-                title={c.name}
-                description={`${c.mobile} - ${c.gst_number || 'N/A'}`}
-
-                onPress={() => selectCustomer(c)}
+                title={item.name}
+                description={`${item.mobile} - ${item.gst_number || 'N/A'}`}
+                onPress={() => selectCustomer(item)}
               />
-            ))}
-          </ScrollView>
+            )}
+            onEndReached={handleCustomerEndReached}
+            onEndReachedThreshold={0.3}
+            ListFooterComponent={
+              <PaginationFooter
+                isLoading={
+                  trimmedCustomerSearch.length > 0
+                    ? shouldUseCustomerApiSearch && (isFetchingMoreSearchedCustomers || isCustomerSearchLoading)
+                    : isFetchingMoreCustomers
+                }
+                hasNextPage={
+                  trimmedCustomerSearch.length > 0
+                    ? shouldUseCustomerApiSearch && Boolean(hasMoreSearchedCustomers)
+                    : Boolean(hasMoreCustomers)
+                }
+              />
+            }
+            ListEmptyComponent={
+              <Text variant="bodyMedium" style={styles.emptyText}>
+                {isCustomerListLoading ? 'Loading customers...' : 'No customers found'}
+              </Text>
+            }
+          />
         </Modal>
       </Portal>
 
@@ -709,34 +848,57 @@ const CreateInvoiceScreen: React.FC<Props> = ({ navigation }) => {
           visible={showProductModal}
           onDismiss={() => {
             setShowProductModal(false);
-            setSearchQuery('');
+            setProductSearchQuery('');
           }}
           contentContainerStyle={styles.modal}
         >
           <Searchbar
             placeholder="Search products"
-            onChangeText={setSearchQuery}
-            value={searchQuery}
+            onChangeText={setProductSearchQuery}
+            value={productSearchQuery}
             style={styles.searchbar}
           />
-          <ScrollView style={styles.modalScroll}>
-            {filteredProducts.map(p => {
+          <FlatList
+            data={visibleProducts}
+            keyExtractor={(item, index) => item.id || `product-${index}`}
+            style={styles.modalScroll}
+            renderItem={({ item }) => {
               const displayStock =
-                p.unitType === "COMPOUND"
-                  ? `${simpleToCompound(p.stock, p.conversionFactor)} ${p.unit} | ${p.stock} ${p.baseUnit}`
-                  : `${p.stock} ${p.baseUnit}`;
-              const description = `Rate: ₹${p.rate} | Stock: ${displayStock}`;
+                item.unitType === "COMPOUND"
+                  ? `${simpleToCompound(item.stock, item.conversionFactor)} ${item.unit} | ${item.stock} ${item.baseUnit}`
+                  : `${item.stock} ${item.baseUnit}`;
+              const description = `Rate: ₹${item.rate} | Stock: ${displayStock}`;
 
               return (
                 <List.Item
-                  key={p.id}
-                  title={p.name}
+                  title={item.name}
                   description={description}
-                  onPress={() => addProduct(p)}
+                  onPress={() => addProduct(item)}
                 />
-              )
-            })}
-          </ScrollView>
+              );
+            }}
+            onEndReached={handleProductEndReached}
+            onEndReachedThreshold={0.3}
+            ListFooterComponent={
+              <PaginationFooter
+                isLoading={
+                  trimmedProductSearch.length > 0
+                    ? shouldUseProductApiSearch && (isFetchingMoreSearchedProducts || isProductSearchLoading)
+                    : isFetchingMoreProducts
+                }
+                hasNextPage={
+                  trimmedProductSearch.length > 0
+                    ? shouldUseProductApiSearch && Boolean(hasMoreSearchedProducts)
+                    : Boolean(hasMoreProducts)
+                }
+              />
+            }
+            ListEmptyComponent={
+              <Text variant="bodyMedium" style={styles.emptyText}>
+                {isProductListLoading ? 'Loading products...' : 'No products found'}
+              </Text>
+            }
+          />
         </Modal>
       </Portal>
 

@@ -7,41 +7,23 @@ import {
     Platform,
     ScrollView,
     Alert,
+    Image,
 } from 'react-native';
 import {
     TextInput,
     Button,
     Text,
-    SegmentedButtons,
     Divider,
+    Surface,
 } from 'react-native-paper';
-import { useLoginEmail, useSendOtp } from '../../hooks/useAuth';
+import { useLoginEmail } from '../../hooks/useAuth';
+
+const appLogo = require('../../assests/logo.png');
 
 const LoginScreen = ({ navigation }: any) => {
-    const [loginMethod, setLoginMethod] = useState('email');
-    const [mobile, setMobile] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
-    const sendOtpMutation = useSendOtp();
     const emailLoginMutation = useLoginEmail();
-
-    const handleMobileLogin = () => {
-        if (mobile.length !== 10) {
-            Alert.alert("Invalid mobile");
-            return;
-        }
-
-        sendOtpMutation.mutate(`${mobile}`, {
-            onSuccess: () => {
-
-            },
-            onError: (err: any) => {
-                Alert.alert("Error", err.response?.data?.message || "Failed");
-            },
-        });
-    };
-
-
 
     const handleEmailLogin = () => {
         if (!email || !password) {
@@ -50,9 +32,6 @@ const LoginScreen = ({ navigation }: any) => {
         }
 
         emailLoginMutation.mutate({ email: email.trim(), password: password.trim() }, {
-            onSuccess: () => {
-                navigation.navigate("OTPVerification", { mobile });
-            },
             onError: (err: any) => {
                 Alert.alert("Error", err?.message || "Failed");
             },
@@ -61,88 +40,77 @@ const LoginScreen = ({ navigation }: any) => {
 
     return (
         <KeyboardAvoidingView
-            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+            keyboardVerticalOffset={Platform.OS === 'ios' ? 24 : 0}
             style={styles.container}>
-            <ScrollView contentContainerStyle={styles.scrollContent}>
-                <View style={styles.header}>
-                    <Text variant="headlineLarge" style={styles.title}>
-                        Invoice Manager
-                    </Text>
-                    <Text variant="bodyMedium" style={styles.subtitle}>
-                        Manage your business invoices with ease
-                    </Text>
-                </View>
+            <View style={styles.blobTop} />
+            <View style={styles.blobBottom} />
+            <ScrollView
+                contentContainerStyle={styles.scrollContent}
+                keyboardShouldPersistTaps="handled"
+                keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
+                showsVerticalScrollIndicator={false}>
+                <View style={styles.content}>
+                    <View style={styles.header}>
+                        <View style={styles.logoOuter}>
+                            <View style={styles.logoInner}>
+                                <Image source={appLogo} style={styles.logoImage} resizeMode="cover" />
+                            </View>
+                        </View>
+                        <Text variant="headlineLarge" style={styles.title}>
+                            Bahix : Billing &amp; Inventory
+                        </Text>
+                        <Text variant="bodyMedium" style={styles.subtitle}>
+                            Sign in to manage invoices, stock, and customer records from one place.
+                        </Text>
+                    </View>
 
-                <View style={styles.form}>
-                    <SegmentedButtons
-                        value={loginMethod}
-                        onValueChange={setLoginMethod}
-                        buttons={[
-                            { value: 'mobile', label: 'Mobile OTP' },
-                            { value: 'email', label: 'Email' },
-                        ]}
-                        style={styles.segmentedButtons}
-                    />
+                    <Surface style={styles.form} elevation={2}>
+                        <View style={styles.sectionHeader}>
+                            <Text style={styles.sectionTitle}>Welcome back</Text>
+                            <Text style={styles.sectionCaption}>Use your email credentials to continue.</Text>
+                        </View>
 
-                    {loginMethod === 'mobile' ? (
-                        <>
-                            <TextInput
-                                label="Mobile Number"
-                                value={mobile}
-                                onChangeText={setMobile}
-                                keyboardType="phone-pad"
-                                maxLength={10}
-                                left={<TextInput.Affix text="+91" />}
-                                style={styles.input}
-                                mode="outlined"
-                            />
-                            <Button
-                                mode="contained"
-                                onPress={handleMobileLogin}
-                                loading={sendOtpMutation.isPending}
-                                disabled={sendOtpMutation.isPending}
-                                style={styles.button}>
-                                Send OTP
-                            </Button>
-                        </>
-                    ) : (
-                        <>
-                            <TextInput
-                                label="Email"
-                                value={email}
-                                onChangeText={setEmail}
-                                keyboardType="email-address"
-                                autoCapitalize="none"
-                                style={styles.input}
-                                mode="outlined"
-                            />
-                            <TextInput
-                                label="Password"
-                                value={password}
-                                onChangeText={setPassword}
-                                secureTextEntry
-                                style={styles.input}
-                                mode="outlined"
-                            />
-                            <Button
-                                mode="contained"
-                                onPress={handleEmailLogin}
-                                loading={emailLoginMutation.isPending}
-                                disabled={emailLoginMutation.isPending}
-                                style={styles.button}>
-                                Login
-                            </Button>
-                        </>
-                    )}
+                        <TextInput
+                            label="Email"
+                            value={email}
+                            onChangeText={setEmail}
+                            keyboardType="email-address"
+                            autoCapitalize="none"
+                            style={styles.input}
+                            mode="outlined"
+                            outlineStyle={styles.inputOutline}
+                        />
+                        <TextInput
+                            label="Password"
+                            value={password}
+                            onChangeText={setPassword}
+                            secureTextEntry
+                            style={styles.input}
+                            mode="outlined"
+                            outlineStyle={styles.inputOutline}
+                        />
+                        <Button
+                            mode="contained"
+                            onPress={handleEmailLogin}
+                            loading={emailLoginMutation.isPending}
+                            disabled={emailLoginMutation.isPending}
+                            buttonColor="#4a2090"
+                            contentStyle={styles.buttonContent}
+                            style={styles.button}>
+                            Login
+                        </Button>
 
-                    <Divider style={styles.divider} />
+                        <Divider style={styles.divider} />
 
-                    <Button
-                        mode="outlined"
-                        onPress={() => navigation.navigate('Register')}
-                        style={styles.registerButton}>
-                        Create New Account
-                    </Button>
+                        <Button
+                            mode="outlined"
+                            onPress={() => navigation.navigate('Register')}
+                            textColor="#4a2090"
+                            style={styles.registerButton}>
+                            Create New Account
+                        </Button>
+                    </Surface>
                 </View>
             </ScrollView>
         </KeyboardAvoidingView>
@@ -152,44 +120,116 @@ const LoginScreen = ({ navigation }: any) => {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
+        backgroundColor: '#F7F4FF',
     },
     scrollContent: {
         flexGrow: 1,
         justifyContent: 'center',
-        padding: 20,
+        paddingHorizontal: 20,
+        paddingVertical: 28,
+    },
+    content: {
+        flex: 1,
+        justifyContent: 'center',
     },
     header: {
         alignItems: 'center',
-        marginBottom: 40,
+        marginBottom: 28,
+    },
+    logoOuter: {
+        width: 88,
+        height: 88,
+        borderRadius: 24,
+        backgroundColor: '#EEF2FF',
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderWidth: 1,
+        borderColor: '#D9E8FF',
+        marginBottom: 16,
+    },
+    logoInner: {
+        width: 70,
+        height: 70,
+        borderRadius: 18,
+        backgroundColor: '#FFFFFF',
+        alignItems: 'center',
+        justifyContent: 'center',
+        overflow: 'hidden',
+    },
+    logoImage: {
+        width: 70,
+        height: 70,
     },
     title: {
         fontWeight: 'bold',
-        color: '#2196F3',
+        color: '#4a2090',
         marginBottom: 8,
+        textAlign: 'center',
+        lineHeight: 40,
     },
     subtitle: {
-        color: '#666',
+        color: '#5F5A73',
         textAlign: 'center',
+        lineHeight: 21,
+        maxWidth: 300,
     },
     form: {
-        backgroundColor: 'white',
-        borderRadius: 12,
+        backgroundColor: '#FFFFFF',
+        borderRadius: 24,
         padding: 20,
-        elevation: 3,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
+        shadowColor: '#4a2090',
+        shadowOffset: { width: 0, height: 12 },
+        shadowOpacity: 0.08,
+        shadowRadius: 24,
     },
-    segmentedButtons: {
-        marginBottom: 20,
+    sectionHeader: {
+        marginBottom: 16,
+    },
+    sectionTitle: {
+        fontSize: 20,
+        fontWeight: '700',
+        color: '#24153D',
+        marginBottom: 4,
+    },
+    sectionCaption: {
+        color: '#756E86',
+        fontSize: 13,
+        lineHeight: 18,
+    },
+    highlightsRow: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 8,
+        marginBottom: 18,
+    },
+    highlightChip: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        backgroundColor: '#F4EEFF',
+        borderRadius: 999,
+        paddingHorizontal: 10,
+        paddingVertical: 7,
+    },
+    highlightText: {
+        color: '#4a2090',
+        fontSize: 12,
+        fontWeight: '600',
     },
     input: {
         marginBottom: 16,
+        backgroundColor: '#FFFFFF',
+    },
+    inputOutline: {
+        borderRadius: 16,
+        borderColor: '#D7CCE9',
     },
     button: {
         marginTop: 8,
-        paddingVertical: 6,
+        borderRadius: 16,
+    },
+    buttonContent: {
+        paddingVertical: 8,
     },
     errorText: {
         color: '#d32f2f',
@@ -200,7 +240,26 @@ const styles = StyleSheet.create({
         marginVertical: 20,
     },
     registerButton: {
-        borderColor: '#2196F3',
+        borderColor: '#C9B7E8',
+        borderRadius: 16,
+    },
+    blobTop: {
+        position: 'absolute',
+        width: 220,
+        height: 220,
+        borderRadius: 110,
+        backgroundColor: '#E9DEFF',
+        top: -80,
+        right: -60,
+    },
+    blobBottom: {
+        position: 'absolute',
+        width: 260,
+        height: 260,
+        borderRadius: 130,
+        backgroundColor: '#EAF1FF',
+        bottom: -120,
+        left: -90,
     },
 });
 

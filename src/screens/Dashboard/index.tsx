@@ -1,7 +1,7 @@
 import type React from "react"
 import { useState } from "react"
 import { View, StyleSheet, ScrollView, RefreshControl } from "react-native"
-import { Card, Text, FAB as Fab, Avatar, IconButton } from "react-native-paper"
+import { Card, Text, Avatar } from "react-native-paper"
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack"
 import type { RootStackParamList, DashboardStats } from "../../types"
 import { useQuery } from "@tanstack/react-query"
@@ -36,30 +36,48 @@ const DashboardScreen: React.FC<Props> = ({ navigation }) => {
 
     return (
         <View style={styles.container}>
-            <ScrollView refreshControl={<RefreshControl refreshing={isFetching} onRefresh={refetch} />}>
-                <View style={styles.gradientHeader}>
-                    <View style={styles.headerContent}>
-                        <View>
-                            <Text variant="headlineMedium" style={styles.welcomeText}>
-                                {business?.name || "Welcome"}
-                            </Text>
-                            <Text variant="bodyMedium" style={styles.dateText}>
-                                {new Date().toLocaleDateString("en-IN", {
-                                    weekday: "short",
-                                    month: "short",
-                                    day: "numeric",
-                                })}
-                            </Text>
+            <ScrollView
+                contentContainerStyle={styles.scrollContent}
+                refreshControl={<RefreshControl refreshing={isFetching} onRefresh={refetch} />}>
+                <Card style={styles.overviewCard}>
+                    <Card.Content style={styles.overviewContent}>
+                        <View style={styles.overviewHeader}>
+                            <View style={styles.overviewTextBlock}>
+                                <Text style={styles.overviewKicker}>Business overview</Text>
+                                <Text style={styles.overviewTitle}>
+                                    {business?.name || "Bahix Workspace"}
+                                </Text>
+                                <Text style={styles.overviewSubtitle}>
+                                    {new Date().toLocaleDateString("en-IN", {
+                                        weekday: "long",
+                                        month: "short",
+                                        day: "numeric",
+                                    })}
+                                </Text>
+                            </View>
+                            <Avatar.Icon
+                                size={48}
+                                icon="view-dashboard-outline"
+                                style={styles.overviewAvatar}
+                            />
                         </View>
-                        <IconButton
-                            icon="cog"
-                            size={26}
-                            iconColor="#fff"
-                            style={styles.settingsBtn}
-                            onPress={() => navigation.navigate("Settings")}
-                        />
-                    </View>
-                </View>
+
+                        <View style={styles.overviewHighlights}>
+                            <View style={styles.overviewChip}>
+                                <Text style={styles.overviewChipLabel}>Today revenue</Text>
+                                <Text style={styles.overviewChipValue}>
+                                    ₹{(dashboardData?.revenueToday / 1000)?.toFixed(1) || 0}K
+                                </Text>
+                            </View>
+                            <View style={styles.overviewChip}>
+                                <Text style={styles.overviewChipLabel}>Customers</Text>
+                                <Text style={styles.overviewChipValue}>
+                                    {dashboardData?.totalCustomers || 0}
+                                </Text>
+                            </View>
+                        </View>
+                    </Card.Content>
+                </Card>
 
                 <View style={styles.primaryStatsContainer}>
                     <Card style={[styles.primaryStatCard, { backgroundColor: "#1E7BE6" }]}>
@@ -147,18 +165,21 @@ const DashboardScreen: React.FC<Props> = ({ navigation }) => {
                     </Card>
                 </View>
 
+                <View style={styles.sectionHeaderRow}>
+                    <Text style={styles.sectionTitle}>Quick access</Text>
+                    <Text style={styles.sectionCaption}>Jump into daily actions</Text>
+                </View>
+
                 <View style={styles.quickActionsModern}>
                     <Card
                         style={[styles.actionCardModern, { backgroundColor: "#DCF4FF" }]}
-                        onPress={() => navigation.getParent()?.navigate("InvoicesTab", {
-                            screen: "CreateInvoice",
-                        })}
+                        onPress={() => navigation.getParent()?.navigate("InvoicesTab")}
                     >
                         <Card.Content style={styles.actionContentModern}>
                             <View style={styles.actionIconBg}>
                                 <Text style={styles.actionEmoji}>📝</Text>
                             </View>
-                            <Text style={styles.actionLabelModern}>Invoice ({dashboardData?.totalInvoices || 0}) </Text>
+                            <Text style={styles.actionLabelModern}>Invoices ({dashboardData?.totalInvoices || 0}) </Text>
                         </Card.Content>
                     </Card>
 
@@ -190,15 +211,6 @@ const DashboardScreen: React.FC<Props> = ({ navigation }) => {
 
                 <View style={styles.bottomSpace} />
             </ScrollView>
-
-            <Fab
-                icon="plus"
-                style={styles.fabModern}
-                onPress={() => navigation.getParent()?.navigate("InvoicesTab", {
-                    screen: "CreateInvoice",
-                })}
-                label="New Invoice"
-            />
         </View>
     )
 }
@@ -208,36 +220,81 @@ const styles = StyleSheet.create({
         flex: 1,
         backgroundColor: "#FFFFFF",
     },
-    gradientHeader: {
-        backgroundColor: "#a864f1ff",
-        paddingVertical: 24,
-        paddingHorizontal: 16,
-        borderBottomLeftRadius: 20,
-        borderBottomRightRadius: 20,
+    scrollContent: {
+        paddingTop: 12,
+        paddingBottom: 24,
     },
-    headerContent: {
+    overviewCard: {
+        marginHorizontal: 16,
+        marginBottom: 16,
+        borderRadius: 20,
+        backgroundColor: "#F7F2FF",
+        borderWidth: 1,
+        borderColor: "#E9DDFD",
+    },
+    overviewContent: {
+        paddingVertical: 16,
+        paddingHorizontal: 16,
+    },
+    overviewHeader: {
         flexDirection: "row",
         justifyContent: "space-between",
         alignItems: "center",
+        marginBottom: 14,
     },
-    welcomeText: {
-        color: "#fff",
+    overviewTextBlock: {
+        flex: 1,
+        paddingRight: 12,
+    },
+    overviewKicker: {
+        color: "#7A58B5",
+        fontSize: 11,
         fontWeight: "700",
-        fontSize: 24,
+        textTransform: "uppercase",
+        letterSpacing: 0.7,
+        marginBottom: 4,
     },
-    dateText: {
-        color: "#E0F0FF",
-        marginTop: 4,
+    overviewTitle: {
+        fontSize: 22,
+        fontWeight: "800",
+        color: "#24153D",
+        marginBottom: 4,
+    },
+    overviewSubtitle: {
+        color: "#7B728E",
+        fontSize: 13,
         fontWeight: "500",
     },
-    settingsBtn: {
-        backgroundColor: "rgba(255, 255, 255, 0.15)",
+    overviewAvatar: {
+        backgroundColor: "#4a2090",
+    },
+    overviewHighlights: {
+        flexDirection: "row",
+        gap: 10,
+    },
+    overviewChip: {
+        flex: 1,
+        backgroundColor: "#FFFFFF",
+        borderRadius: 16,
+        paddingVertical: 12,
+        paddingHorizontal: 12,
+    },
+    overviewChipLabel: {
+        color: "#7B728E",
+        fontSize: 11,
+        fontWeight: "600",
+        marginBottom: 4,
+        textTransform: "uppercase",
+    },
+    overviewChipValue: {
+        color: "#24153D",
+        fontSize: 18,
+        fontWeight: "800",
     },
     primaryStatsContainer: {
         flexDirection: "row",
         paddingHorizontal: 16,
         gap: 12,
-        marginTop: -12,
         marginBottom: 16,
     },
     primaryStatCard: {
@@ -460,6 +517,20 @@ const styles = StyleSheet.create({
         paddingVertical: 24,
         fontSize: 14,
     },
+    sectionHeaderRow: {
+        paddingHorizontal: 16,
+        marginBottom: 12,
+    },
+    sectionTitle: {
+        fontSize: 17,
+        fontWeight: "700",
+        color: "#24153D",
+        marginBottom: 2,
+    },
+    sectionCaption: {
+        color: "#7B728E",
+        fontSize: 12,
+    },
     quickActionsModern: {
         flexDirection: "row",
         paddingHorizontal: 16,
@@ -495,15 +566,8 @@ const styles = StyleSheet.create({
         color: "#1F2937",
         textAlign: "center",
     },
-    fabModern: {
-        position: "absolute",
-        margin: 16,
-        right: 0,
-        bottom: 0,
-        backgroundColor: "#1E7BE6",
-    },
     bottomSpace: {
-        height: 80,
+        height: 16,
     },
 })
 

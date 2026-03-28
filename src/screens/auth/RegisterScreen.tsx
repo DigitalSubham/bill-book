@@ -6,6 +6,7 @@ import {
     KeyboardAvoidingView,
     Platform,
     Alert,
+    Image,
 } from 'react-native';
 import {
     TextInput,
@@ -13,12 +14,14 @@ import {
     Text,
     SegmentedButtons,
     HelperText,
-    Card,
     Divider,
+    Surface,
 } from 'react-native-paper';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../types';
 import { useRegister } from '../../hooks/useAuth';
+
+const appLogo = require('../../assests/logo.png');
 
 type RegisterScreenNavigationProp = NativeStackNavigationProp<
     RootStackParamList,
@@ -116,8 +119,6 @@ const RegisterScreen: React.FC<Props> = ({ navigation }) => {
                         Alert.alert('Registration Failed', error.response?.data?.message || error.message);
                     },
                 });
-
-                Alert.alert('Success', 'Account created successfully!');
             }
         } catch (error: any) {
             Alert.alert('Registration Failed', error.message);
@@ -133,23 +134,42 @@ const RegisterScreen: React.FC<Props> = ({ navigation }) => {
 
     return (
         <KeyboardAvoidingView
-            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+            keyboardVerticalOffset={Platform.OS === 'ios' ? 24 : 0}
             style={styles.container}>
-            <ScrollView contentContainerStyle={styles.scrollContent}>
-                <View style={styles.header}>
-                    <Text variant="headlineLarge" style={styles.title}>
-                        Create Account
-                    </Text>
-                    <Text variant="bodyMedium" style={styles.subtitle}>
-                        Start managing your invoices today
-                    </Text>
-                </View>
+            <View style={styles.blobTop} />
+            <View style={styles.blobBottom} />
+            <ScrollView
+                contentContainerStyle={styles.scrollContent}
+                keyboardShouldPersistTaps="handled"
+                keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
+                showsVerticalScrollIndicator={false}>
+                <View style={styles.content}>
+                    <View style={styles.header}>
+                        <View style={styles.logoOuter}>
+                            <View style={styles.logoInner}>
+                                <Image source={appLogo} style={styles.logoImage} resizeMode="cover" />
+                            </View>
+                        </View>
+                        <Text variant="headlineLarge" style={styles.title}>
+                            Bahix : Billing &amp; Inventory
+                        </Text>
+                        <Text variant="bodyMedium" style={styles.subtitle}>
+                            Create your account and start managing invoices, stock, and customers.
+                        </Text>
+                    </View>
 
-                <Card style={styles.card}>
-                    <Card.Content>
+                    <Surface style={styles.card} elevation={2}>
+                        <View style={styles.sectionHeader}>
+                            <Text style={styles.sectionTitle}>Create account</Text>
+                            <Text style={styles.sectionCaption}>
+                                Choose your sign-up method and finish the setup below.
+                            </Text>
+                        </View>
+
                         <SegmentedButtons
                             value={registerMethod}
-                            onValueChange={(value) => setRegisterMethod(value)}
+                            onValueChange={(value) => setRegisterMethod(value as 'mobile' | 'email')}
                             buttons={[
                                 { value: 'mobile', label: 'Mobile' },
                                 { value: 'email', label: 'Email' },
@@ -168,6 +188,7 @@ const RegisterScreen: React.FC<Props> = ({ navigation }) => {
                                     left={<TextInput.Affix text="+91" />}
                                     mode="outlined"
                                     style={styles.input}
+                                    outlineStyle={styles.inputOutline}
                                     error={!!errors.mobile}
                                 />
                                 {errors.mobile && (
@@ -186,6 +207,7 @@ const RegisterScreen: React.FC<Props> = ({ navigation }) => {
                                     autoCapitalize="none"
                                     mode="outlined"
                                     style={styles.input}
+                                    outlineStyle={styles.inputOutline}
                                     error={!!errors.email}
                                 />
                                 {errors.email && (
@@ -201,6 +223,7 @@ const RegisterScreen: React.FC<Props> = ({ navigation }) => {
                                     secureTextEntry={!showPassword}
                                     mode="outlined"
                                     style={styles.input}
+                                    outlineStyle={styles.inputOutline}
                                     error={!!errors.password}
                                     right={
                                         <TextInput.Icon
@@ -222,6 +245,7 @@ const RegisterScreen: React.FC<Props> = ({ navigation }) => {
                                     secureTextEntry={!showConfirmPassword}
                                     mode="outlined"
                                     style={styles.input}
+                                    outlineStyle={styles.inputOutline}
                                     error={!!errors.confirmPassword}
                                     right={
                                         <TextInput.Icon
@@ -243,7 +267,9 @@ const RegisterScreen: React.FC<Props> = ({ navigation }) => {
                             onPress={handleRegister}
                             loading={registerMutation.isPending}
                             disabled={registerMutation.isPending}
-                            style={styles.loginContainer}>
+                            buttonColor="#4a2090"
+                            contentStyle={styles.buttonContent}
+                            style={styles.primaryButton}>
                             {registerMethod === 'mobile' ? 'Continue' : 'Create Account'}
                         </Button>
 
@@ -252,13 +278,12 @@ const RegisterScreen: React.FC<Props> = ({ navigation }) => {
                         <Button
                             mode="outlined"
                             onPress={() => navigation.navigate('Login')}
+                            textColor="#4a2090"
                             style={styles.registerButton}>
-                            Already have an account?   Login
+                            Already have an account? Login
                         </Button>
-                    </Card.Content>
-                </Card>
-
-                <View style={styles.bottomSpace} />
+                    </Surface>
+                </View>
             </ScrollView>
         </KeyboardAvoidingView>
     );
@@ -269,59 +294,123 @@ export default RegisterScreen;
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#f5f5f5',
+        backgroundColor: '#F7F4FF',
     },
     scrollContent: {
         flexGrow: 1,
         justifyContent: 'center',
-        padding: 20,
+        paddingHorizontal: 20,
+        paddingVertical: 20,
+    },
+    content: {
+        flex: 1,
+        justifyContent: 'center',
     },
     header: {
         alignItems: 'center',
-        marginBottom: 30,
+        marginBottom: 20,
+    },
+    logoOuter: {
+        width: 80,
+        height: 80,
+        borderRadius: 24,
+        backgroundColor: '#EEF2FF',
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderWidth: 1,
+        borderColor: '#D9E8FF',
+        marginBottom: 12,
+    },
+    logoInner: {
+        width: 64,
+        height: 64,
+        borderRadius: 18,
+        backgroundColor: '#FFFFFF',
+        alignItems: 'center',
+        justifyContent: 'center',
+        overflow: 'hidden',
+    },
+    logoImage: {
+        width: 64,
+        height: 64,
     },
     title: {
         fontWeight: 'bold',
-        color: '#2196F3',
-        marginBottom: 8,
+        color: '#4a2090',
+        marginBottom: 6,
+        textAlign: 'center',
+        lineHeight: 34,
     },
     subtitle: {
-        color: '#666',
+        color: '#5F5A73',
         textAlign: 'center',
-    },
-    phoneNumber: {
-        fontWeight: 'bold',
-        color: '#333',
-        marginTop: 4,
+        lineHeight: 19,
+        maxWidth: 300,
     },
     card: {
-        borderRadius: 12,
-        elevation: 3,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
+        backgroundColor: '#FFFFFF',
+        borderRadius: 24,
+        padding: 18,
+        shadowColor: '#4a2090',
+        shadowOffset: { width: 0, height: 12 },
+        shadowOpacity: 0.08,
+        shadowRadius: 24,
     },
-    segmentedButtons: {
-        marginBottom: 20,
+    sectionHeader: {
+        marginBottom: 12,
     },
-
-    input: {
+    sectionTitle: {
+        fontSize: 20,
+        fontWeight: '700',
+        color: '#24153D',
         marginBottom: 4,
     },
+    sectionCaption: {
+        color: '#756E86',
+        fontSize: 13,
+        lineHeight: 17,
+    },
+    segmentedButtons: {
+        marginBottom: 14,
+    },
+    input: {
+        marginBottom: 4,
+        backgroundColor: '#FFFFFF',
+    },
+    inputOutline: {
+        borderRadius: 16,
+        borderColor: '#D7CCE9',
+    },
     registerButton: {
-        borderColor: '#2196F3',
+        borderColor: '#C9B7E8',
+        borderRadius: 16,
     },
-    loginContainer: {
-        flexDirection: 'row',
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginTop: 36,
+    primaryButton: {
+        marginTop: 14,
+        borderRadius: 16,
     },
-    bottomSpace: {
-        height: 20,
+    buttonContent: {
+        paddingVertical: 8,
     },
     divider: {
-        marginVertical: 20,
+        marginVertical: 16,
+    },
+    blobTop: {
+        position: 'absolute',
+        width: 220,
+        height: 220,
+        borderRadius: 110,
+        backgroundColor: '#E9DEFF',
+        top: -80,
+        right: -60,
+    },
+    blobBottom: {
+        position: 'absolute',
+        width: 260,
+        height: 260,
+        borderRadius: 130,
+        backgroundColor: '#EAF1FF',
+        bottom: -120,
+        left: -90,
     },
 });

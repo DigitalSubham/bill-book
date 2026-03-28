@@ -34,10 +34,24 @@ export const currency = (v: Nullable<number> = 0): string => {
   })}`;
 };
 
+export const formatQuantity = (
+  value: Nullable<string | number>,
+  maximumFractionDigits: number = 2,
+): string => {
+  const num = Number(value);
+  if (!Number.isFinite(num)) return '0';
+
+  return num.toLocaleString('en-IN', {
+    minimumFractionDigits: 0,
+    maximumFractionDigits,
+  });
+};
+
 export const simpleToCompound = (stock: string, conf: string) => {
-  return String(
-    (Number.parseFloat(String(stock)) || 0) / Number.parseFloat(String(conf)),
-  );
+  const quantity =
+    (Number.parseFloat(String(stock)) || 0) / Number.parseFloat(String(conf));
+
+  return formatQuantity(quantity);
 };
 
 export const compoundToSimple = (stock: string, conf: string) => {

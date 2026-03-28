@@ -12,7 +12,7 @@ const MainTabs = () => {
     <Tab.Navigator
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: '#2196F3',
+        tabBarActiveTintColor: '#4a208f',
         tabBarInactiveTintColor: '#757575',
         tabBarLabelStyle: {
           fontSize: 12,

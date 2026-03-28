@@ -1,21 +1,15 @@
 import { createNavigationContainerRef, DefaultTheme, NavigationContainer } from '@react-navigation/native';
 import AuthStack from './AuthStack';
 import MainTabs from './MainTabs';
-import { useEffect } from 'react';
-import { loadToken } from '../redux/slices/authSlice';
-import { useAppDispatch, useAppSelector } from '../redux/hooks';
+import { useAuthContext } from '../context/AuthContext';
+import SplashScreen from '../components/common/SplashScreen';
 
 export const navigationRef = createNavigationContainerRef<any>();
 
 const AppNavigator = () => {
-  const dispatch = useAppDispatch();
-  const { token, loading } = useAppSelector((state: any) => state.auth);
+  const { token, loading } = useAuthContext();
 
-  useEffect(() => {
-    dispatch(loadToken());
-  }, []);
-
-  if (loading) return null; // splash screen recommended
+  if (loading) return <SplashScreen />;
 
   const theme = {
     ...DefaultTheme,
@@ -24,7 +18,6 @@ const AppNavigator = () => {
       background: '#fff',
     },
   };
-
 
   return (
     <NavigationContainer ref={navigationRef} theme={theme}>

@@ -1,8 +1,11 @@
 import axios from './axiosInstance';
+import { fetchPaginatedList } from './pagination';
+import { InvoiceType, PaginationParams } from '../types';
 
 export const fetchCustomer = () => axios.get('/invoices').then(res => res.data);
 
-export const fetchInvoices = () => axios.get(`/invoices`).then(res => res.data);
+export const fetchInvoicesPage = (params?: PaginationParams) =>
+  fetchPaginatedList<InvoiceType>('/invoices', params);
 
 export const fetchInvoicesById = (id: string) =>
   axios.get(`/invoices/${id}`).then(res => res.data);

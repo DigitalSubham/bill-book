@@ -4,22 +4,23 @@ import {
     View,
     StyleSheet,
     FlatList,
+    ScrollView,
 } from 'react-native';
 import {
     Text,
-    FAB as Fab,
     Searchbar,
     Card,
     Chip,
-    SegmentedButtons,
     Avatar,
 } from 'react-native-paper';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { formTypeEnum, RootStackParamList } from '../../types';
-import { useQuery } from '@tanstack/react-query';
-import { fetchInvoices } from '../../apis/InvoiceApis';
+import { formTypeEnum, InvoiceType, RootStackParamList } from '../../types';
+import { fetchInvoicesPage } from '../../apis/InvoiceApis';
 import Loader from '../../components/common/Loader';
 import { formatDate } from '../../utils/helper';
+import PaginationFooter from '../../components/common/PaginationFooter';
+import { usePaginatedListQuery } from '../../hooks/usePaginatedListQuery';
+import { useDebouncedValue } from '../../hooks/useDebouncedValue';
 
 type InvoiceListScreenNavigationProp = NativeStackNavigationProp<
     RootStackParamList,
@@ -30,14 +31,39 @@ interface Props {
     navigation: InvoiceListScreenNavigationProp;
 }
 
+type InvoiceListItem = InvoiceType & {
+    paymentStatus?: InvoiceType['status'];
+};
+
+const getInvoiceStatus = (invoice: InvoiceListItem): InvoiceType['status'] => {
+    const baseStatus = invoice.paymentStatus ?? invoice.status;
+    const isOverdue = baseStatus !== 'paid' && new Date(invoice.dueDate) < new Date();
+
+    return isOverdue ? 'overdue' : baseStatus;
+};
+
 const InvoiceListScreen: React.FC<Props> = ({ navigation }) => {
     const [searchQuery, setSearchQuery] = useState('');
     const [filterStatus, setFilterStatus] = useState<string>('all');
+    const debouncedSearchQuery = useDebouncedValue(searchQuery, 350);
 
-    const { data: invoices, isLoading, refetch, isFetching } = useQuery({
+    const {
+        items: invoices,
+        isLoading,
+        refetch,
+        isRefetching,
+        isFetchingNextPage,
+        hasNextPage,
+        fetchNextPage,
+    } = usePaginatedListQuery<InvoiceType>({
         queryKey: ['invoices'],
-        queryFn: fetchInvoices,
-    })
+        queryFn: fetchInvoicesPage,
+    });
+
+    const trimmedSearchQuery = searchQuery.trim();
+    const debouncedTrimmedSearchQuery = debouncedSearchQuery.trim();
+    const hasActiveSearch = debouncedTrimmedSearchQuery.length > 0;
+    const hasActiveStatusFilter = filterStatus !== 'all';
 
     const getStatusColor = (status: string): string => {
         switch (status) {
@@ -54,9 +80,9 @@ const InvoiceListScreen: React.FC<Props> = ({ navigation }) => {
         }
     };
 
-    const renderInvoice = ({ item }: { item: any }) => {
-        const isOverdue =
-            item.paymentStatus !== 'paid' && new Date(item.dueDate) < new Date();
+    const renderInvoice = ({ item }: { item: InvoiceListItem }) => {
+        const invoiceStatus = getInvoiceStatus(item);
+        const isOverdue = invoiceStatus === 'overdue';
         return (
             <Card
                 style={styles.invoiceCard}
@@ -86,10 +112,10 @@ const InvoiceListScreen: React.FC<Props> = ({ navigation }) => {
                                 compact
                                 style={[
                                     styles.statusChip,
-                                    { backgroundColor: getStatusColor(isOverdue ? 'overdue' : item.paymentStatus) },
+                                    { backgroundColor: getStatusColor(isOverdue ? 'overdue' : invoiceStatus) },
                                 ]}
                                 textStyle={styles.chipText}>
-                                {isOverdue ? 'OVERDUE' : item?.paymentStatus?.toUpperCase() || 'N/A'}
+                                {isOverdue ? 'OVERDUE' : invoiceStatus?.toUpperCase() || 'N/A'}
                             </Chip>
                         </View>
                     </View>
@@ -104,11 +130,76 @@ const InvoiceListScreen: React.FC<Props> = ({ navigation }) => {
         );
     };
 
+    const localMatches = invoices.filter((invoice: InvoiceListItem) => {
+        const invoiceStatus = getInvoiceStatus(invoice);
+        const normalizedQuery = trimmedSearchQuery.toLowerCase();
+        const matchesSearch =
+            normalizedQuery.length === 0 ||
+            String(invoice.invoiceNumber ?? '').includes(normalizedQuery) ||
+            invoice.customer.name.toLowerCase().includes(normalizedQuery);
+        const matchesStatus =
+            filterStatus === 'all' || invoiceStatus === filterStatus;
+
+        return matchesSearch && matchesStatus;
+    });
+
+    const shouldUseApiFilters =
+        hasActiveStatusFilter || (hasActiveSearch && localMatches.length === 0);
+
+    const {
+        items: filteredInvoicesFromApi,
+        isLoading: isFilteringInvoices,
+        isFetchingNextPage: isFetchingMoreFilteredInvoices,
+        hasNextPage: hasMoreFilteredInvoices,
+        fetchNextPage: fetchMoreFilteredInvoices,
+        refetch: refetchFilteredInvoices,
+        isFetched: hasFetchedFilteredInvoices,
+    } = usePaginatedListQuery<InvoiceType>({
+        queryKey: ['invoices-search', debouncedTrimmedSearchQuery, filterStatus],
+        queryFn: params =>
+            fetchInvoicesPage({
+                ...params,
+                search: hasActiveSearch ? debouncedTrimmedSearchQuery : undefined,
+                status: filterStatus === 'all' ? undefined : filterStatus,
+            }),
+        staleTime: 30 * 1000,
+        enabled: shouldUseApiFilters,
+    });
+
+    const filteredInvoices = shouldUseApiFilters && hasFetchedFilteredInvoices
+        ? filteredInvoicesFromApi.filter((invoice: InvoiceListItem) => {
+            const invoiceStatus = getInvoiceStatus(invoice);
+            return filterStatus === 'all' || invoiceStatus === filterStatus;
+        })
+        : localMatches;
+
     if (isLoading) {
         return (
             <Loader text="Loading invoices..." />
         );
     }
+
+    const handleRefresh = () => {
+        if (shouldUseApiFilters) {
+            refetchFilteredInvoices();
+            return;
+        }
+
+        refetch();
+    };
+
+    const handleEndReached = () => {
+        if (trimmedSearchQuery.length > 0 || hasActiveStatusFilter) {
+            if (shouldUseApiFilters && hasMoreFilteredInvoices && !isFetchingMoreFilteredInvoices) {
+                fetchMoreFilteredInvoices();
+            }
+            return;
+        }
+
+        if (hasNextPage && !isFetchingNextPage) {
+            fetchNextPage();
+        }
+    };
 
     return (
         <View style={styles.container}>
@@ -120,26 +211,59 @@ const InvoiceListScreen: React.FC<Props> = ({ navigation }) => {
                     style={styles.searchbar}
                 />
 
-                <SegmentedButtons
-                    value={filterStatus}
-                    onValueChange={setFilterStatus}
-                    buttons={[
+                <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={styles.filterTabs}
+                >
+                    {[
                         { value: 'all', label: 'All' },
                         { value: 'pending', label: 'Pending' },
                         { value: 'partial', label: 'Partial' },
                         { value: 'paid', label: 'Paid' },
-                    ]}
-                    style={styles.segmentedButtons}
-                />
+                        { value: 'overdue', label: 'Overdue' },
+                    ].map(tab => (
+                        <Chip
+                            key={tab.value}
+                            selected={filterStatus === tab.value}
+                            onPress={() => setFilterStatus(tab.value)}
+                            mode={filterStatus === tab.value ? 'flat' : 'outlined'}
+                            style={styles.filterChip}
+                            textStyle={styles.filterChipText}
+                        >
+                            {tab.label}
+                        </Chip>
+                    ))}
+                </ScrollView>
             </View>
 
             <FlatList
-                data={invoices}
-                onRefresh={refetch}
-                refreshing={isFetching}
+                data={filteredInvoices}
+                onRefresh={handleRefresh}
+                refreshing={
+                    shouldUseApiFilters
+                        ? isFilteringInvoices && !isFetchingMoreFilteredInvoices
+                        : isRefetching && !isFetchingNextPage
+                }
                 renderItem={renderInvoice}
-                keyExtractor={(item) => item.id}
+                keyExtractor={(item, index) => item.id ?? `invoice-${item.invoiceNumber ?? index}`}
                 contentContainerStyle={styles.list}
+                onEndReached={handleEndReached}
+                onEndReachedThreshold={0.4}
+                ListFooterComponent={
+                    <PaginationFooter
+                        isLoading={
+                            trimmedSearchQuery.length > 0 || hasActiveStatusFilter
+                                ? shouldUseApiFilters && (isFetchingMoreFilteredInvoices || isFilteringInvoices)
+                                : isFetchingNextPage
+                        }
+                        hasNextPage={
+                            trimmedSearchQuery.length > 0 || hasActiveStatusFilter
+                                ? shouldUseApiFilters && Boolean(hasMoreFilteredInvoices)
+                                : Boolean(hasNextPage)
+                        }
+                    />
+                }
                 ListEmptyComponent={
                     <View style={styles.emptyContainer}>
                         <Avatar.Icon
@@ -155,13 +279,6 @@ const InvoiceListScreen: React.FC<Props> = ({ navigation }) => {
                         </Text>
                     </View>
                 }
-            />
-
-            <Fab
-                icon="plus"
-                style={styles.fab}
-                onPress={() => navigation.navigate('CreateInvoice')}
-                label="New Invoice"
             />
         </View>
     );
@@ -183,8 +300,16 @@ const styles = StyleSheet.create({
     searchbar: {
         marginBottom: 12,
     },
-    segmentedButtons: {
-        marginBottom: 0,
+    filterTabs: {
+        gap: 8,
+        paddingRight: 8,
+    },
+    filterChip: {
+        height: 36,
+        justifyContent: 'center',
+    },
+    filterChipText: {
+        fontSize: 13,
     },
     list: {
         padding: 12,
@@ -277,13 +402,6 @@ const styles = StyleSheet.create({
         color: '#666',
         textAlign: 'center',
     },
-    fab: {
-        position: 'absolute',
-        margin: 16,
-        right: 0,
-        bottom: 0,
-    },
-
 });
 
 export default InvoiceListScreen;

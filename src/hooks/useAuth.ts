@@ -1,38 +1,37 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-
-import { removeToken, saveToken } from '../utils/storage';
 import {
   loginEmailApi,
   registerApi,
   sendOtpApi,
   verifyOtpApi,
 } from '../apis/authApi';
-import { logout, setToken } from '../redux/slices/authSlice';
-import { useAppDispatch } from '../redux/hooks';
-const queryClient = useQueryClient();
+import { useAuthContext } from '../context/AuthContext';
 
 export const useSendOtp = () =>
   useMutation({
     mutationFn: (mobile: string) => sendOtpApi(mobile),
   });
 
-export const useVerifyOtp = () =>
-  useMutation({
+export const useVerifyOtp = () => {
+  const { setAuthToken } = useAuthContext();
+
+  return useMutation({
     mutationFn: ({ mobile, otp }: any) => verifyOtpApi(mobile, otp),
     onSuccess: async res => {
       const token = res.data.token;
-      await saveToken(token);
+      await setAuthToken(token);
     },
   });
+};
 
 export const useLoginEmail = () => {
-  const dispatch = useAppDispatch();
+  const { setAuthToken } = useAuthContext();
+
   return useMutation({
     mutationFn: ({ email, password }: any) => loginEmailApi(email, password),
     onSuccess: async res => {
       const token = res.data.token;
-      await saveToken(token);
-      dispatch(setToken(token));
+      await setAuthToken(token);
     },
   });
 };
@@ -44,12 +43,13 @@ export const useRegister = () =>
   });
 
 export const useLogout = () => {
-  const dispatch = useAppDispatch();
+  const queryClient = useQueryClient();
+  const { clearAuthToken } = useAuthContext();
+
   return useMutation({
     mutationFn: async () => {
-      await removeToken();
+      await clearAuthToken();
       queryClient.clear();
-      dispatch(logout());
     },
   });
 };

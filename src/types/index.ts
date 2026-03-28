@@ -6,6 +6,26 @@ export enum formTypeEnum {
 }
 export type Nullable<T> = T | null | undefined;
 
+export interface PaginationParams {
+  page?: number;
+  limit?: number;
+  search?: string;
+  [key: string]: string | number | boolean | undefined;
+}
+
+export interface PaginationMeta {
+  page: number;
+  limit: number;
+  total?: number;
+  totalPages?: number;
+  hasNextPage: boolean;
+}
+
+export interface PaginatedResponse<T> {
+  items: T[];
+  meta: PaginationMeta;
+}
+
 export interface FormErrors {
   name?: string;
   mobile?: string;

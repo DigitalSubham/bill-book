@@ -7,7 +7,6 @@ import {
 } from 'react-native';
 import {
     Text,
-    FAB as Fab,
     Searchbar,
     Card,
     Avatar,
@@ -15,9 +14,11 @@ import {
 } from 'react-native-paper';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList, CustomerType, formTypeEnum } from '../../types';
-import { useQuery } from '@tanstack/react-query';
-import { fetchCustomer } from '../../apis/customerApis';
+import { fetchCustomersPage } from '../../apis/customerApis';
 import Loader from '../../components/common/Loader';
+import PaginationFooter from '../../components/common/PaginationFooter';
+import { usePaginatedListQuery } from '../../hooks/usePaginatedListQuery';
+import { useDebouncedValue } from '../../hooks/useDebouncedValue';
 
 type CustomerListScreenNavigationProp = NativeStackNavigationProp<
     RootStackParamList,
@@ -30,19 +31,53 @@ interface Props {
 
 const CustomerListScreen: React.FC<Props> = ({ navigation }) => {
     const [searchQuery, setSearchQuery] = useState('');
+    const debouncedSearchQuery = useDebouncedValue(searchQuery, 350);
 
-    const { data: customers = [], isLoading, refetch, isFetching } = useQuery({
+    const {
+        items: customers,
+        isLoading,
+        refetch,
+        isRefetching,
+        isFetchingNextPage,
+        hasNextPage,
+        fetchNextPage,
+    } = usePaginatedListQuery<CustomerType>({
         queryKey: ['customers'],
-        queryFn: () => fetchCustomer(),
+        queryFn: fetchCustomersPage,
         staleTime: 0,
-    })
+    });
 
-    const filteredCustomers = customers.filter(
-        (customer: any) =>
-            customer.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            customer.mobile.includes(searchQuery) ||
-            customer.email?.toLowerCase().includes(searchQuery.toLowerCase())
+    const trimmedSearchQuery = searchQuery.trim();
+    const debouncedTrimmedSearchQuery = debouncedSearchQuery.trim();
+
+    const localMatches = customers.filter(
+        (customer: CustomerType) =>
+            customer.name.toLowerCase().includes(trimmedSearchQuery.toLowerCase()) ||
+            customer.mobile.includes(trimmedSearchQuery) ||
+            customer.email?.toLowerCase().includes(trimmedSearchQuery.toLowerCase())
     );
+
+    const shouldUseApiSearch =
+        debouncedTrimmedSearchQuery.length > 0 && localMatches.length === 0;
+
+    const {
+        items: searchedCustomers,
+        isLoading: isSearchingCustomers,
+        isFetchingNextPage: isFetchingMoreSearchedCustomers,
+        hasNextPage: hasMoreSearchedCustomers,
+        fetchNextPage: fetchMoreSearchedCustomers,
+    } = usePaginatedListQuery<CustomerType>({
+        queryKey: ['customers-search', debouncedTrimmedSearchQuery],
+        queryFn: params =>
+            fetchCustomersPage({
+                ...params,
+                search: debouncedTrimmedSearchQuery,
+            }),
+        staleTime: 30 * 1000,
+        enabled: shouldUseApiSearch,
+    });
+
+    const filteredCustomers = shouldUseApiSearch ? searchedCustomers : localMatches;
 
 
     if (isLoading) {
@@ -50,6 +85,26 @@ const CustomerListScreen: React.FC<Props> = ({ navigation }) => {
             <Loader text="Loading customers..." />
         );
     }
+
+    const handleEndReached = () => {
+        if (trimmedSearchQuery.length > 0) {
+            if (shouldUseApiSearch && hasMoreSearchedCustomers && !isFetchingMoreSearchedCustomers) {
+                fetchMoreSearchedCustomers();
+            }
+            return;
+        }
+
+        if (shouldUseApiSearch) {
+            if (hasMoreSearchedCustomers && !isFetchingMoreSearchedCustomers) {
+                fetchMoreSearchedCustomers();
+            }
+            return;
+        }
+
+        if (hasNextPage && !isFetchingNextPage) {
+            fetchNextPage();
+        }
+    };
 
     const renderCustomer = ({ item }: { item: CustomerType }) => {
         if (!item.id) return null;
@@ -167,11 +222,27 @@ const CustomerListScreen: React.FC<Props> = ({ navigation }) => {
 
             <FlatList
                 onRefresh={refetch}
-                refreshing={isFetching}
+                refreshing={isRefetching && !isFetchingNextPage}
                 data={filteredCustomers}
                 renderItem={renderCustomer}
                 keyExtractor={(item) => item.id}
                 contentContainerStyle={styles.list}
+                onEndReached={handleEndReached}
+                onEndReachedThreshold={0.4}
+                ListFooterComponent={
+                    <PaginationFooter
+                        isLoading={
+                            trimmedSearchQuery.length > 0
+                                ? shouldUseApiSearch && (isFetchingMoreSearchedCustomers || isSearchingCustomers)
+                                : isFetchingNextPage
+                        }
+                        hasNextPage={
+                            trimmedSearchQuery.length > 0
+                                ? shouldUseApiSearch && Boolean(hasMoreSearchedCustomers)
+                                : Boolean(hasNextPage)
+                        }
+                    />
+                }
                 ListEmptyComponent={
                     <View style={styles.emptyContainer}>
                         <Avatar.Icon
@@ -187,13 +258,6 @@ const CustomerListScreen: React.FC<Props> = ({ navigation }) => {
                         </Text>
                     </View>
                 }
-            />
-
-            <Fab
-                icon="plus"
-                style={styles.fab}
-                onPress={() => navigation.navigate('CustomerForm', { formType: formTypeEnum.ADD })}
-                label="Add Customer"
             />
         </View>
     );
@@ -235,7 +299,7 @@ const styles = StyleSheet.create({
     },
 
     avatar: {
-        backgroundColor: "#2196F3",
+        backgroundColor: "#4a208f",
         marginRight: 10,
     },
 
@@ -282,7 +346,7 @@ const styles = StyleSheet.create({
         width: 26,
         height: 26,
         borderRadius: 13,
-        backgroundColor: "#E3F2FD",
+        backgroundColor: "#5e2da7",
         justifyContent: "center",
         alignItems: "center",
         elevation: 2,
@@ -290,7 +354,7 @@ const styles = StyleSheet.create({
 
     editIcon: {
         fontSize: 14,
-        color: "#2196F3",
+        color: "#E3F2FD",
         fontWeight: "bold",
         marginTop: -1,
     },
@@ -363,13 +427,6 @@ const styles = StyleSheet.create({
         color: '#666',
         textAlign: 'center',
     },
-    fab: {
-        position: 'absolute',
-        margin: 16,
-        right: 0,
-        bottom: 0,
-    },
-
 });
 
 export default CustomerListScreen;

@@ -1,7 +1,12 @@
 import axios from './axiosInstance';
+import { fetchPaginatedList } from './pagination';
+import { CustomerType, PaginationParams } from '../types';
 
 export const fetchCustomer = () =>
   axios.get('/customers').then(res => res.data);
+
+export const fetchCustomersPage = (params?: PaginationParams) =>
+  fetchPaginatedList<CustomerType>('/customers', params);
 
 export const fetchCustomersById = (id: string) =>
   axios.get(`/customers/${id}`).then(res => res.data);

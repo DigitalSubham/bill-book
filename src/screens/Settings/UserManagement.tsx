@@ -6,7 +6,6 @@ import {
 } from 'react-native';
 import {
     Text,
-    FAB as Fab,
     Searchbar,
     Card,
     Avatar,
@@ -276,13 +275,6 @@ const UserListScreen: React.FC<Props> = ({ navigation }) => {
                     </View>
                 }
             />
-
-            <Fab
-                icon="plus"
-                style={styles.fab}
-                onPress={() => navigation.navigate('UserForm', { formType: formTypeEnum.ADD })}
-                label="Add User"
-            />
         </View>
     );
 };
@@ -416,13 +408,6 @@ const styles = StyleSheet.create({
         color: '#666',
         textAlign: 'center',
     },
-    fab: {
-        position: 'absolute',
-        margin: 16,
-        right: 0,
-        bottom: 0,
-        backgroundColor: '#2196F3',
-    },
     card: {
         margin: 12,
         marginBottom: 0,
@@ -479,7 +464,7 @@ const styles = StyleSheet.create({
         paddingVertical: 6,
     },
     bottomSpace: {
-        height: 20,
+        height: 8,
     },
 });
 

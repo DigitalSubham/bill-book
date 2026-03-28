@@ -23,14 +23,14 @@ const SettingsScreen: React.FC<Props> = ({ navigation }) => {
                         </View>
                     </Card.Content>
                 </Card>
-                <Card style={styles.recentCard}>
+                {/* <Card style={styles.recentCard}>
                     <Card.Content style={styles.recentCardContent}>
                         <View style={styles.recentHeader}>
                             <Text style={styles.recentTitle}>User Management</Text>
                             <IconButton icon="arrow-right" size={20} onPress={() => navigation.navigate("UserManagement")} />
                         </View>
                     </Card.Content>
-                </Card>
+                </Card> */}
 
 
             </ScrollView>

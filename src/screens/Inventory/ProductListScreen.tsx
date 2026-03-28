@@ -7,18 +7,19 @@ import {
 } from "react-native";
 import {
     Text,
-    FAB as Fab,
     Searchbar,
     IconButton,
     Menu,
     Avatar,
 } from "react-native-paper";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
-import { RootStackParamList, ProductType, formTypeEnum } from "../../types";
-import { useQuery } from "@tanstack/react-query";
-import { fetchProducts } from "../../apis/productApis";
+import { RootStackParamList, ProductType } from "../../types";
+import { fetchProductsPage } from "../../apis/productApis";
 import ProductCard from "../../components/products/ProductCard";
 import Loader from "../../components/common/Loader";
+import PaginationFooter from "../../components/common/PaginationFooter";
+import { usePaginatedListQuery } from "../../hooks/usePaginatedListQuery";
+import { useDebouncedValue } from "../../hooks/useDebouncedValue";
 
 
 export type ProductListScreenNavigationProp = NativeStackNavigationProp<
@@ -30,15 +31,53 @@ interface Props {
     navigation: ProductListScreenNavigationProp;
 }
 
-const ProductListScreen: React.FC<Props> = ({ navigation }) => {
+const ProductListScreen: React.FC<Props> = () => {
     const [searchQuery, setSearchQuery] = useState("");
     const [sortBy, setSortBy] = useState<"name" | "stock" | "price">("name");
     const [menuVisible, setMenuVisible] = useState(false);
+    const debouncedSearchQuery = useDebouncedValue(searchQuery, 350);
 
-    const { data: products = [], isLoading, refetch, isFetching } = useQuery({
+    const {
+        items: products,
+        isLoading,
+        refetch,
+        isRefetching,
+        isFetchingNextPage,
+        hasNextPage,
+        fetchNextPage,
+    } = usePaginatedListQuery<ProductType>({
         queryKey: ["products"],
-        queryFn: fetchProducts,
+        queryFn: fetchProductsPage,
         staleTime: 5 * 60 * 1000,
+    });
+
+    const trimmedSearchQuery = searchQuery.trim();
+    const debouncedTrimmedSearchQuery = debouncedSearchQuery.trim();
+
+    const localMatches = products.filter(
+        (product: ProductType) =>
+            product.name.toLowerCase().includes(trimmedSearchQuery.toLowerCase()) ||
+            product.description?.toLowerCase().includes(trimmedSearchQuery.toLowerCase())
+    );
+
+    const shouldUseApiSearch =
+        debouncedTrimmedSearchQuery.length > 0 && localMatches.length === 0;
+
+    const {
+        items: searchedProducts,
+        isLoading: isSearchingProducts,
+        isFetchingNextPage: isFetchingMoreSearchedProducts,
+        hasNextPage: hasMoreSearchedProducts,
+        fetchNextPage: fetchMoreSearchedProducts,
+    } = usePaginatedListQuery<ProductType>({
+        queryKey: ["products-search", debouncedTrimmedSearchQuery],
+        queryFn: params =>
+            fetchProductsPage({
+                ...params,
+                search: debouncedTrimmedSearchQuery,
+            }),
+        staleTime: 30 * 1000,
+        enabled: shouldUseApiSearch,
     });
 
     if (isLoading) {
@@ -50,12 +89,7 @@ const ProductListScreen: React.FC<Props> = ({ navigation }) => {
 
 
     // 🔍 Search + Sorting Logic
-    const filteredProducts = products
-        .filter(
-            (product: ProductType) =>
-                product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                product.description?.toLowerCase().includes(searchQuery.toLowerCase())
-        )
+    const filteredProducts = (shouldUseApiSearch ? searchedProducts : localMatches)
         .sort((a: ProductType, b: ProductType) => {
             switch (sortBy) {
                 case "name":
@@ -68,6 +102,26 @@ const ProductListScreen: React.FC<Props> = ({ navigation }) => {
                     return 0;
             }
         });
+
+    const handleEndReached = () => {
+        if (trimmedSearchQuery.length > 0) {
+            if (shouldUseApiSearch && hasMoreSearchedProducts && !isFetchingMoreSearchedProducts) {
+                fetchMoreSearchedProducts();
+            }
+            return;
+        }
+
+        if (shouldUseApiSearch) {
+            if (hasMoreSearchedProducts && !isFetchingMoreSearchedProducts) {
+                fetchMoreSearchedProducts();
+            }
+            return;
+        }
+
+        if (hasNextPage && !isFetchingNextPage) {
+            fetchNextPage();
+        }
+    };
 
 
     return (
@@ -122,7 +176,23 @@ const ProductListScreen: React.FC<Props> = ({ navigation }) => {
                 keyExtractor={(item) => item.id}
                 contentContainerStyle={[styles.list, { flexGrow: 1 }]}
                 onRefresh={refetch}
-                refreshing={isFetching}
+                refreshing={isRefetching && !isFetchingNextPage && !isFetchingMoreSearchedProducts}
+                onEndReached={handleEndReached}
+                onEndReachedThreshold={0.4}
+                ListFooterComponent={
+                    <PaginationFooter
+                        isLoading={
+                            trimmedSearchQuery.length > 0
+                                ? shouldUseApiSearch && (isFetchingMoreSearchedProducts || isSearchingProducts)
+                                : isFetchingNextPage
+                        }
+                        hasNextPage={
+                            trimmedSearchQuery.length > 0
+                                ? shouldUseApiSearch && Boolean(hasMoreSearchedProducts)
+                                : Boolean(hasNextPage)
+                        }
+                    />
+                }
                 ListEmptyComponent={
                     <View style={styles.emptyContainer}>
                         <Avatar.Icon
@@ -138,14 +208,6 @@ const ProductListScreen: React.FC<Props> = ({ navigation }) => {
                         </Text>
                     </View>
                 }
-            />
-
-            {/* Add Product */}
-            <Fab
-                icon="plus"
-                style={styles.fab}
-                onPress={() => navigation.navigate("ProductForm", { formType: formTypeEnum.ADD })}
-                label="Add Product"
             />
         </View>
     );
@@ -192,14 +254,6 @@ const styles = StyleSheet.create({
         color: '#666',
         textAlign: 'center',
     },
-    fab: {
-        position: 'absolute',
-        margin: 16,
-        right: 0,
-        bottom: 0,
-    },
-
-
 });
 
 export default ProductListScreen;
