@@ -1,4 +1,4 @@
-package com.billbook
+package com.bahix
 
 import android.app.Application
 import com.facebook.react.PackageList

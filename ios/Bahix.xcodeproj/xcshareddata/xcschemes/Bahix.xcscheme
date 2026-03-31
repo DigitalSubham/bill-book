@@ -17,7 +17,7 @@
                BlueprintIdentifier = "13B07F861A680F5B00A75B9A"
                BuildableName = "Bahix.app"
                BlueprintName = "Bahix"
-               ReferencedContainer = "container:billBook.xcodeproj">
+               ReferencedContainer = "container:Bahix.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
       </BuildActionEntries>
@@ -33,9 +33,9 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "00E356ED1AD99517003FC87E"
-               BuildableName = "billBookTests.xctest"
-               BlueprintName = "billBookTests"
-               ReferencedContainer = "container:billBook.xcodeproj">
+               BuildableName = "BahixTests.xctest"
+               BlueprintName = "BahixTests"
+               ReferencedContainer = "container:Bahix.xcodeproj">
             </BuildableReference>
          </TestableReference>
       </Testables>
@@ -57,7 +57,7 @@
             BlueprintIdentifier = "13B07F861A680F5B00A75B9A"
                BuildableName = "Bahix.app"
                BlueprintName = "Bahix"
-            ReferencedContainer = "container:billBook.xcodeproj">
+            ReferencedContainer = "container:Bahix.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </LaunchAction>
@@ -74,7 +74,7 @@
             BlueprintIdentifier = "13B07F861A680F5B00A75B9A"
             BuildableName = "Bahix.app"
             BlueprintName = "Bahix"
-            ReferencedContainer = "container:billBook.xcodeproj">
+            ReferencedContainer = "container:Bahix.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </ProfileAction>

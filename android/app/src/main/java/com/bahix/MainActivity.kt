@@ -1,4 +1,4 @@
-package com.billbook
+package com.bahix
 
 import com.facebook.react.ReactActivity
 import com.facebook.react.ReactActivityDelegate
